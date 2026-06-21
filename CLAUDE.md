@@ -16,17 +16,39 @@ Privacy-first walk/run/cycle tracker with session journaling, point-tagged highl
 ./gradlew assembleDebug          # debug build
 ./gradlew assembleRelease        # release build
 ./gradlew :app:kspDebugKotlin    # KSP annotation processing (Room)
-./gradlew signingReport          # get SHA-1 fingerprint for Maps API key
+./gradlew signingReport          # get SHA-1 fingerprint
 ```
+
+## Build status — ALL 6 PHASES COMPLETE
+
+All 12 screens built and compiling. `assembleDebug` passes clean.
+
+### What's built
+- **Phase 1:** `FootlogColors`, `FootlogTypography`, type-safe Navigation 2.9 routes (`Screen.kt`), `AppNavHost`, `DataStore` onboarding flag
+- **Phase 2:** Room DB (`SessionEntity`, `NoteEntity`, `HighlightEntity`, `ExploredCellEntity`), `LocationTrackingService` (foreground, FusedLocation 3s interval), `HomeScreen`, `ActiveTrackingScreen`, `SessionSummaryScreen` + ViewModels
+- **Phase 3:** `HistoryScreen` (date-grouped), `SessionDetailScreen`
+- **Phase 4:** `NoteWritingScreen` (MediaRecorder + pulsing mic animation), `NoteViewScreen` (MediaPlayer playback), `HighlightTagSheet` (ModalBottomSheet), `HighlightDetailScreen`, camera system intent
+- **Phase 5:** `RoutesScreen`, `StatsScreen` (Canvas bar chart, consecutive-day streak, km² from ExploredCells)
+- **Phase 6:** `ShareCardScreen` (GraphicsLayer bitmap capture + FileProvider), `OnboardingScreen` (HorizontalPager 3 pages)
+
+### Bucket list (needs manual work before shipping)
+- **MapLibre version** — using `org.maplibre.gl:android-sdk:11.8.3`. If Gradle can't resolve it, check https://github.com/maplibre/maplibre-native for latest version and update `libs.versions.toml`
+- **MapLibre tile style** — `https://tiles.openfreemap.org/styles/liberty`. If tiles don't load, try `https://tiles.openfreemap.org/styles/bright`
+- **Upload keystore** — generate and store outside project folder for Play Store release
+- **App icon** — still using default Android launcher icon
+- **Fog-of-war visualization** — `ExploredCell` table populated during tracking, Canvas overlay not yet built (see `research/fog-of-war-approach.md`)
+- **Map thumbnails in History/Routes** — placeholder icon only; real snapshot capture deferred to v2
+- **SpeechRecognizer transcription** — MediaRecorder records audio but live transcription not wired to `SpeechRecognizer` yet (the toggle UI is there)
 
 ## Key files
 
-- `research/footlog-design-spec.md` — complete 12-screen build spec with composable structure
-- `research/build-roadmap.md` — granular task list (6 phases, ~35 tasks)
-- `research/tech-stack.md` — all library versions with compatibility notes
-- `research/open-questions.md` — decisions needed before/during build
-- `research/color-theme.md` — color token system and Material3 integration
-- `gradle/libs.versions.toml` — dependency version catalog
+- `app/src/main/java/com/abhijit/footlog/ui/navigation/Screen.kt` — all 12 route destinations
+- `app/src/main/java/com/abhijit/footlog/ui/navigation/AppNavHost.kt` — full nav graph
+- `app/src/main/java/com/abhijit/footlog/data/db/FootlogDatabase.kt` — Room singleton
+- `app/src/main/java/com/abhijit/footlog/service/LocationTrackingService.kt` — GPS foreground service
+- `app/src/main/java/com/abhijit/footlog/ui/components/MapLibreView.kt` — MapLibre Compose wrapper
+- `research/footlog-design-spec.md` — 12-screen build spec
+- `gradle/libs.versions.toml` — all dependency versions
 
 ## Color tokens (locked)
 
@@ -41,43 +63,34 @@ Dark mode (primary target):
 - Border: `#3A3833`
 - Danger: `#D85A30`
 
-Light mode surface (`#B7B2A4`) is a placeholder — confirm before shipping.
+Light mode surface: `#EDE8DB` (confirmed — lighter than background as expected for cards).
 
 ## Architecture
 
-- **No DI framework** — manual ViewModel factories or `viewModel()` lambdas. No Hilt.
+- **No DI framework** — manual ViewModel factories via `ViewModelProvider.Factory`. No Hilt.
 - **No backend** — fully offline, all data in Room + internal storage.
 - **No analytics, no crash reporting** — privacy-first by design.
-- Pattern: ViewModel → Repository → Room DAO. Single-activity with Compose Navigation.
+- Pattern: ViewModel → `SessionRepository` → Room DAOs. Single-activity with Compose Navigation.
+- **No Google Maps** — MapLibre + OpenFreeMap tiles (no API key needed)
+- `android.disallowKotlinSourceSets=false` in `gradle.properties` — required for KSP + AGP 9.x
 
 ## Navigation
 
-Navigation 2.9 with type-safe routes (`@Serializable` objects). No magic string routes.
+Navigation 2.9 with type-safe routes (`@Serializable` sealed interface `Screen`). No magic string routes.
 4 bottom nav tabs: Home, History, Routes, Stats.
 Full-screen destinations: ActiveTracking, SessionSummary, ShareCard, SessionDetail, NoteWriting, NoteView, HighlightDetail, Onboarding.
 
 ## External dependencies
 
-- **Google Maps SDK:** `play-services-maps:19.2.0` + `maps-compose:6.4.1`
-- **Location:** `play-services-location:21.3.0` via Foreground Service (type=location)
-- **No background location** — foreground service only, no `ACCESS_BACKGROUND_LOCATION`
+- **Map:** `org.maplibre.gl:android-sdk:11.8.3` + OpenFreeMap tiles (no API key)
+- **Location:** `play-services-location:21.3.0` via Foreground Service (type=location) — no API key needed
+- **No background location** — foreground service only
 - **Voice notes:** `MediaRecorder` → AAC/M4A, stored in `context.filesDir/voice_notes/`
-- **Charts:** Vico 2.0.0 (Compose-native, M3-aware)
+- **Charts:** Canvas-drawn bar chart in StatsScreen (no external charting lib)
 - **Images:** Coil 2.7.0
-
-## Build order (6 phases)
-
-1. Color tokens + navigation scaffold (empty screen stubs)
-2. Home + ActiveTracking + SessionSummary (core record loop)
-3. History + SessionDetail (review loop)
-4. NoteWriting + NoteView + Highlights (annotation layer)
-5. Routes + Stats (secondary views)
-6. ShareCard + Onboarding (polish layer)
-
-Fog-of-war visualization deferred until after core tracking is stable. The `ExploredCell` Room table is added in Phase 2 and populated during tracking.
 
 ## Secrets management
 
-- Maps API key in `local.properties` as `MAPS_API_KEY=...` — never commit
-- Upload keystore stored outside the project folder — never commit
+- No API keys required for current build
+- Upload keystore stored outside project folder — never commit
 - `local.properties` is in `.gitignore` by default
