@@ -19,6 +19,7 @@ dependencyResolutionManagement {
     repositories {
         google()
         mavenCentral()
+        maven { url = uri("https://artifacts.maplibre.org/repository/maplibre-releases/") }
     }
 }
 
