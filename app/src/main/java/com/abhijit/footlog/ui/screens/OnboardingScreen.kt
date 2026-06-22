@@ -38,9 +38,20 @@ fun OnboardingScreen(onComplete: () -> Unit) {
     val context = LocalContext.current
     val prefs = remember { AppPreferences(context) }
 
+    var locationDenied by remember { mutableStateOf(false) }
+
     val locationLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
-    ) { scope.launch { pagerState.animateScrollToPage(2) } }
+    ) { results ->
+        val granted = results[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                results[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+        if (granted) {
+            locationDenied = false
+            scope.launch { pagerState.animateScrollToPage(2) }
+        } else {
+            locationDenied = true
+        }
+    }
 
     val finalLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
@@ -86,28 +97,35 @@ fun OnboardingScreen(onComplete: () -> Unit) {
                         }
                         1 -> {
                             Icon(Icons.Filled.LocationOn, contentDescription = null,
-                                modifier = Modifier.size(80.dp), tint = routeColor)
+                                modifier = Modifier.size(80.dp),
+                                tint = if (locationDenied) FootlogColors.danger else routeColor)
                             Spacer(Modifier.height(24.dp))
                             Text("Allow location access", style = MaterialTheme.typography.headlineMedium,
                                 color = textPrimary, textAlign = TextAlign.Center)
                             Spacer(Modifier.height(12.dp))
                             Text(
-                                "Footlog uses location only while you're actively tracking. Nothing is shared or sent anywhere.",
+                                if (locationDenied)
+                                    "Location access is required to track your routes. Please allow it to continue."
+                                else
+                                    "Footlog uses location only while you're actively tracking. Nothing is shared or sent anywhere.",
                                 style = MaterialTheme.typography.bodyLarge,
-                                color = textSecondary, textAlign = TextAlign.Center
+                                color = if (locationDenied) FootlogColors.danger else textSecondary,
+                                textAlign = TextAlign.Center
                             )
                             Spacer(Modifier.height(32.dp))
                             Button(
                                 onClick = {
+                                    locationDenied = false
                                     locationLauncher.launch(arrayOf(
                                         Manifest.permission.ACCESS_FINE_LOCATION,
                                         Manifest.permission.ACCESS_COARSE_LOCATION
                                     ))
                                 },
                                 colors = ButtonDefaults.buttonColors(
-                                    containerColor = routeColor, contentColor = onPrimary),
+                                    containerColor = if (locationDenied) FootlogColors.danger else routeColor,
+                                    contentColor = onPrimary),
                                 shape = MaterialTheme.shapes.small
-                            ) { Text("Allow location access") }
+                            ) { Text(if (locationDenied) "Try again" else "Allow location access") }
                         }
                         2 -> {
                             Icon(Icons.Filled.CameraAlt, contentDescription = null,

@@ -6,6 +6,8 @@ import android.net.Uri
 import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -20,13 +22,18 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.ActiveTrackingViewModel
 import com.abhijit.footlog.ui.components.HighlightTagSheet
 import com.abhijit.footlog.ui.components.MapLibreView
+import java.io.File
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,6 +45,7 @@ fun ActiveTrackingScreen(
     vm: ActiveTrackingViewModel = viewModel(factory = ActiveTrackingViewModel.Factory(activityType))
 ) {
     val uiState by vm.uiState.collectAsState()
+    val context = LocalContext.current
     val isDark = isSystemInDarkTheme()
     val danger = FootlogColors.danger
     val accent = if (isDark) FootlogColors.highlightAccentDark else FootlogColors.highlightAccentLight
@@ -46,15 +54,18 @@ fun ActiveTrackingScreen(
     val textSecondary = if (isDark) FootlogColors.textSecondaryDark else FootlogColors.textSecondaryLight
 
     var showHighlightSheet by remember { mutableStateOf(false) }
+    var showStopConfirmation by remember { mutableStateOf(false) }
+    var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.StartActivityForResult()
     ) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
-            val photoUri = result.data?.data
+            val uri = pendingPhotoUri
             uiState.currentLocation?.let { loc ->
-                vm.addPhotoHighlight(photoUri?.toString(), loc.latitude, loc.longitude)
+                vm.addPhotoHighlight(uri?.toString(), loc.latitude, loc.longitude)
             }
+            pendingPhotoUri = null
         }
     }
 
@@ -97,7 +108,14 @@ fun ActiveTrackingScreen(
         ) {
             SmallFloatingActionButton(
                 onClick = {
-                    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE)
+                    val photoDir = File(context.cacheDir, "footlog_shares").also { it.mkdirs() }
+                    val photoFile = File(photoDir, "photo_${System.currentTimeMillis()}.jpg")
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", photoFile)
+                    pendingPhotoUri = uri
+                    val intent = Intent(MediaStore.ACTION_IMAGE_CAPTURE).apply {
+                        putExtra(MediaStore.EXTRA_OUTPUT, uri)
+                        addFlags(Intent.FLAG_GRANT_WRITE_URI_PERMISSION)
+                    }
                     cameraLauncher.launch(intent)
                 },
                 containerColor = if (isDark) FootlogColors.surfaceDark else FootlogColors.surfaceLight,
@@ -125,16 +143,25 @@ fun ActiveTrackingScreen(
         }
 
         // Stop button
+        val infiniteTransition = rememberInfiniteTransition(label = "stop_pulse")
+        val stopPulseScale by infiniteTransition.animateFloat(
+            initialValue = 1f,
+            targetValue = 1.03f,
+            animationSpec = infiniteRepeatable(
+                animation = tween(1000, easing = FastOutSlowInEasing),
+                repeatMode = RepeatMode.Reverse
+            ),
+            label = "stop_scale"
+        )
+
         Button(
-            onClick = {
-                vm.stopTracking()
-                onStop(uiState.sessionId)
-            },
+            onClick = { showStopConfirmation = true },
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .padding(bottom = 32.dp)
                 .fillMaxWidth()
-                .padding(horizontal = 16.dp),
+                .padding(horizontal = 16.dp)
+                .scale(stopPulseScale),
             colors = ButtonDefaults.buttonColors(
                 containerColor = danger,
                 contentColor = Color.White
@@ -143,7 +170,7 @@ fun ActiveTrackingScreen(
         ) {
             Icon(Icons.Filled.Stop, contentDescription = null)
             Spacer(Modifier.width(8.dp))
-            Text("Stop")
+            Text("Stop", fontWeight = FontWeight.Medium)
         }
     }
 
@@ -158,12 +185,50 @@ fun ActiveTrackingScreen(
             }
         )
     }
+
+    if (showStopConfirmation) {
+        AlertDialog(
+            onDismissRequest = { showStopConfirmation = false },
+            title = { Text("Stop tracking?") },
+            text = { Text("Are you sure you want to end your current session?") },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        vm.stopTracking()
+                        onStop(uiState.sessionId)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = danger)
+                ) {
+                    Text("End session")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showStopConfirmation = false }) {
+                    Text("Cancel", color = textSecondary)
+                }
+            },
+            containerColor = if (isDark) FootlogColors.surfaceDark else FootlogColors.surfaceLight,
+            titleContentColor = textPrimary,
+            textContentColor = textSecondary
+        )
+    }
 }
 
 @Composable
 private fun StatBlock(value: String, label: String, textPrimary: Color, textSecondary: Color) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(value, style = MaterialTheme.typography.headlineSmall, color = textPrimary)
+        AnimatedContent(
+            targetState = value,
+            transitionSpec = {
+                fadeIn(animationSpec = tween(220, delayMillis = 90)) +
+                        slideInVertically(animationSpec = tween(220, delayMillis = 90)) { height -> height } togetherWith
+                        fadeOut(animationSpec = tween(220)) +
+                        slideOutVertically(animationSpec = tween(220)) { height -> -height }
+            },
+            label = "stat_anim"
+        ) { targetValue ->
+            Text(targetValue, style = MaterialTheme.typography.headlineSmall, color = textPrimary)
+        }
         Text(label, style = MaterialTheme.typography.labelSmall, color = textSecondary)
     }
 }

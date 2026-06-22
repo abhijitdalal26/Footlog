@@ -46,7 +46,7 @@ class SessionRepository(context: Context) {
     // Explored cells
     suspend fun insertExploredCell(lat: Double, lng: Double) {
         val cellX = latToCell(lat)
-        val cellY = lngToCell(lng)
+        val cellY = lngToCell(lng, lat)
         exploredCellDao.insert(ExploredCellEntity(cellX, cellY, System.currentTimeMillis()))
     }
     fun getExploredCellCount(): Flow<Int> = exploredCellDao.getCellCountFlow()

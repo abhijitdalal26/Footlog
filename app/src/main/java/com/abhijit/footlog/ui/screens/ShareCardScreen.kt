@@ -164,7 +164,8 @@ private fun ShareAction(
 }
 
 private fun shareImage(context: Context, bitmap: Bitmap) {
-    val file = File(context.cacheDir, "footlog_share_${System.currentTimeMillis()}.jpg")
+    val dir = File(context.cacheDir, "footlog_shares").also { it.mkdirs() }
+    val file = File(dir, "footlog_share_${System.currentTimeMillis()}.jpg")
     FileOutputStream(file).use { bitmap.compress(Bitmap.CompressFormat.JPEG, 90, it) }
     val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", file)
     val intent = Intent(Intent.ACTION_SEND).apply {

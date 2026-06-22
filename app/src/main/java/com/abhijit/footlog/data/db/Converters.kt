@@ -21,10 +21,14 @@ class Converters {
 
     @TypeConverter
     fun jsonToLatLngList(json: String): List<LatLngPoint> {
-        val arr = JSONArray(json)
-        return (0 until arr.length()).map { i ->
-            val obj = arr.getJSONObject(i)
-            LatLngPoint(obj.getDouble("lat"), obj.getDouble("lng"))
+        return try {
+            val arr = JSONArray(json)
+            (0 until arr.length()).map { i ->
+                val obj = arr.getJSONObject(i)
+                LatLngPoint(obj.getDouble("lat"), obj.getDouble("lng"))
+            }
+        } catch (_: Exception) {
+            emptyList()
         }
     }
 
@@ -32,5 +36,6 @@ class Converters {
     fun noteTypeToString(type: NoteType): String = type.name
 
     @TypeConverter
-    fun stringToNoteType(value: String): NoteType = NoteType.valueOf(value)
+    fun stringToNoteType(value: String): NoteType =
+        NoteType.entries.find { it.name == value } ?: NoteType.TEXT
 }

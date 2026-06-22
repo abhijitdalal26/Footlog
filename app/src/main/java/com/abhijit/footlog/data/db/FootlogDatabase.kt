@@ -16,7 +16,7 @@ import com.abhijit.footlog.data.entity.SessionEntity
 
 @Database(
     entities = [SessionEntity::class, NoteEntity::class, HighlightEntity::class, ExploredCellEntity::class],
-    version = 1,
+    version = 2,
     exportSchema = false
 )
 @TypeConverters(Converters::class)
@@ -35,7 +35,7 @@ abstract class FootlogDatabase : RoomDatabase() {
                     context.applicationContext,
                     FootlogDatabase::class.java,
                     "footlog.db"
-                ).build().also { instance = it }
+                ).fallbackToDestructiveMigration(dropAllTables = true).build().also { instance = it }
             }
     }
 }

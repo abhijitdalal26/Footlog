@@ -1,6 +1,7 @@
 package com.abhijit.footlog.ui.screens
 
 import android.Manifest
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.core.*
@@ -44,6 +45,11 @@ fun NoteWritingScreen(
     val recordingPermLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { granted -> if (granted) vm.toggleRecording() }
+
+    BackHandler(enabled = isRecording) {
+        vm.toggleRecording()
+        onBack()
+    }
 
     val pulse = rememberInfiniteTransition(label = "pulse")
     val scale by pulse.animateFloat(
@@ -127,10 +133,16 @@ fun NoteWritingScreen(
             Spacer(Modifier.weight(1f))
 
             val canSave = (typingMode && typedText.isNotBlank()) ||
-                    (!typingMode && (isRecording || transcription.isNotBlank()))
+                    (!typingMode && !isRecording && transcription.isNotBlank()) ||
+                    (!typingMode && isRecording)
             Button(
                 onClick = {
-                    if (typingMode) vm.saveTextNote(typedText) else vm.saveVoiceNote()
+                    if (typingMode) {
+                        vm.saveTextNote(typedText)
+                    } else {
+                        if (isRecording) vm.toggleRecording()
+                        vm.saveVoiceNote()
+                    }
                     onBack()
                 },
                 enabled = canSave,

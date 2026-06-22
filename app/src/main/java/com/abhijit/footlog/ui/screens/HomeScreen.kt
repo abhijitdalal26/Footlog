@@ -1,5 +1,7 @@
 package com.abhijit.footlog.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -12,9 +14,7 @@ import androidx.compose.material.icons.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -73,28 +73,31 @@ fun HomeScreen(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    ActivityCard(
+                    AnimatedActivityCard(
                         label = "Walk",
                         icon = Icons.Filled.DirectionsWalk,
                         bgColor = routeColor,
                         textColor = onPrimary,
                         modifier = Modifier.weight(1f),
+                        delayIndex = 0,
                         onClick = { onStartActivity("walk") }
                     )
-                    ActivityCard(
+                    AnimatedActivityCard(
                         label = "Run",
                         icon = Icons.Filled.DirectionsRun,
                         bgColor = routeColor,
                         textColor = onPrimary,
                         modifier = Modifier.weight(1f),
+                        delayIndex = 1,
                         onClick = { onStartActivity("run") }
                     )
-                    ActivityCard(
+                    AnimatedActivityCard(
                         label = "Cycle",
                         icon = Icons.Filled.DirectionsBike,
                         bgColor = routeColor,
                         textColor = onPrimary,
                         modifier = Modifier.weight(1f),
+                        delayIndex = 2,
                         onClick = { onStartActivity("cycle") }
                     )
                 }
@@ -167,31 +170,45 @@ fun HomeScreen(
 }
 
 @Composable
-private fun ActivityCard(
+private fun AnimatedActivityCard(
     label: String,
     icon: ImageVector,
     bgColor: androidx.compose.ui.graphics.Color,
     textColor: androidx.compose.ui.graphics.Color,
     modifier: Modifier = Modifier,
+    delayIndex: Int = 0,
     onClick: () -> Unit
 ) {
-    Card(
-        onClick = onClick,
-        modifier = modifier.height(90.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = bgColor)
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(delayIndex * 80L)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(500)) + scaleIn(tween(500), initialScale = 0.8f),
+        modifier = modifier
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize(),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.Center
+        Card(
+            onClick = onClick,
+            modifier = Modifier.height(90.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(containerColor = bgColor)
         ) {
-            Icon(icon, contentDescription = label, tint = textColor, modifier = Modifier.size(28.dp))
-            Spacer(Modifier.height(4.dp))
-            Text(label, style = MaterialTheme.typography.labelLarge, color = textColor)
+            Column(
+                modifier = Modifier.fillMaxSize(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(icon, contentDescription = label, tint = textColor, modifier = Modifier.size(28.dp))
+                Spacer(Modifier.height(4.dp))
+                Text(label, style = MaterialTheme.typography.labelLarge, color = textColor)
+            }
         }
     }
 }
+
 
 @Composable
 private fun RecentSessionCard(

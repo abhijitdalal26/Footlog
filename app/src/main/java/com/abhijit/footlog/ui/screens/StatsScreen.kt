@@ -1,5 +1,7 @@
 package com.abhijit.footlog.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
@@ -10,10 +12,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.StatsViewModel
+import java.util.Calendar
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,7 +60,7 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
             }
 
             Card(
-                modifier = Modifier.fillMaxWidth().height(160.dp),
+                modifier = Modifier.fillMaxWidth().height(180.dp),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(containerColor = surfaceColor)
             ) {
@@ -64,7 +68,8 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
                     WeeklyBarChart(
                         distances = stats.weeklyDistances,
                         barColor = routeColor,
-                        barBgColor = barBg
+                        barBgColor = barBg,
+                        textSecondary = textSecondary
                     )
                 }
             }
@@ -74,20 +79,29 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard("%.1f km".format(stats.totalDistanceMeters / 1000f), "Total distance",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f))
+                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 0)
                 StatCard("${stats.totalSessions}", "Sessions",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f))
+                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 1)
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 StatCard("${stats.currentStreak} days", "Streak",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f))
+                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 2)
                 StatCard("%.2f km²".format(stats.exploredAreaKm2), "Areas explored",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f))
+                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 3)
             }
         }
+    }
+}
+
+private fun last7DayLabels(): List<String> {
+    val letters = listOf("S", "M", "T", "W", "T", "F", "S")
+    val cal = Calendar.getInstance()
+    return (6 downTo 0).map { daysAgo ->
+        cal.timeInMillis = System.currentTimeMillis() - daysAgo * 86400000L
+        letters[cal.get(Calendar.DAY_OF_WEEK) - 1]
     }
 }
 
@@ -95,23 +109,44 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
 private fun WeeklyBarChart(
     distances: List<Float>,
     barColor: Color,
-    barBgColor: Color
+    barBgColor: Color,
+    textSecondary: Color
 ) {
     val maxDist = distances.maxOrNull()?.takeIf { it > 0f } ?: 1f
-    val days = listOf("M", "T", "W", "T", "F", "S", "S")
+    val days = remember { last7DayLabels() }
+    
+    val animProgress = remember { Animatable(0f) }
+    LaunchedEffect(distances) {
+        animProgress.animateTo(1f, animationSpec = tween(1000, easing = FastOutSlowInEasing))
+    }
+
+    val labelPaint = remember(textSecondary) {
+        android.graphics.Paint().apply {
+            textSize = 32f
+            textAlign = android.graphics.Paint.Align.CENTER
+            color = textSecondary.hashCode()
+        }
+    }
 
     Canvas(modifier = Modifier.fillMaxSize()) {
         val barCount = distances.size
         val barAreaWidth = size.width / barCount
-        val barWidth = barAreaWidth * 0.5f
-        val maxBarHeight = size.height - 20f
+        val barWidth = barAreaWidth * 0.45f
+        val labelHeight = 40f
+        val maxBarHeight = size.height - labelHeight
 
         distances.forEachIndexed { i, dist ->
             val x = i * barAreaWidth + (barAreaWidth - barWidth) / 2
-            val normalizedHeight = (dist / maxDist) * maxBarHeight
-            // Background bar
-            drawRect(color = barBgColor, topLeft = Offset(x, 0f), size = Size(barWidth, maxBarHeight))
-            // Value bar
+            val normalizedHeight = (dist / maxDist) * maxBarHeight * animProgress.value
+            
+            // Bar background
+            drawRect(
+                color = barBgColor.copy(alpha = 0.3f), 
+                topLeft = Offset(x, 0f), 
+                size = Size(barWidth, maxBarHeight)
+            )
+            
+            // Bar foreground
             if (dist > 0f) {
                 drawRect(
                     color = barColor,
@@ -119,6 +154,14 @@ private fun WeeklyBarChart(
                     size = Size(barWidth, normalizedHeight)
                 )
             }
+            
+            // Day label
+            drawContext.canvas.nativeCanvas.drawText(
+                days.getOrElse(i) { "" },
+                x + barWidth / 2,
+                size.height - 8f,
+                labelPaint
+            )
         }
     }
 }
@@ -130,19 +173,33 @@ private fun StatCard(
     surfaceColor: Color,
     textPrimary: Color,
     textSecondary: Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    delayIndex: Int = 0
 ) {
-    Card(
-        modifier = modifier.height(90.dp),
-        shape = MaterialTheme.shapes.medium,
-        colors = CardDefaults.cardColors(containerColor = surfaceColor)
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(delayIndex * 100L)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(500)) + slideInVertically(tween(500)) { it / 3 },
+        modifier = modifier
     ) {
-        Column(
-            modifier = Modifier.fillMaxSize().padding(12.dp),
-            verticalArrangement = Arrangement.Center
+        Card(
+            modifier = Modifier.fillMaxWidth().height(90.dp),
+            shape = MaterialTheme.shapes.medium,
+            colors = CardDefaults.cardColors(containerColor = surfaceColor)
         ) {
-            Text(value, style = MaterialTheme.typography.headlineSmall, color = textPrimary)
-            Text(label, style = MaterialTheme.typography.bodySmall, color = textSecondary)
+            Column(
+                modifier = Modifier.fillMaxSize().padding(12.dp),
+                verticalArrangement = Arrangement.Center
+            ) {
+                Text(value, style = MaterialTheme.typography.headlineSmall, color = textPrimary)
+                Text(label, style = MaterialTheme.typography.bodySmall, color = textSecondary)
+            }
         }
     }
 }
+

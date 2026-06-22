@@ -98,6 +98,10 @@ fun MapLibreView(
                 }
             }
         },
+        onRelease = { mapView ->
+            mapView.onStop()
+            mapView.onDestroy()
+        },
         modifier = modifier
     )
 }

@@ -40,20 +40,29 @@ class NoteViewModel(app: Application, private val sessionId: String) : AndroidVi
     private fun startRecording() {
         val dir = File(getApplication<Application>().filesDir, "voice_notes")
         dir.mkdirs()
-        audioFile = File(dir, "${UUID.randomUUID()}.m4a")
-        recorder = MediaRecorder(getApplication()).apply {
-            setAudioSource(MediaRecorder.AudioSource.MIC)
-            setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
-            setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
-            setOutputFile(audioFile!!.absolutePath)
-            prepare()
-            start()
+        val file = File(dir, "${UUID.randomUUID()}.m4a")
+        audioFile = file
+        try {
+            recorder = MediaRecorder(getApplication()).apply {
+                setAudioSource(MediaRecorder.AudioSource.MIC)
+                setOutputFormat(MediaRecorder.OutputFormat.MPEG_4)
+                setAudioEncoder(MediaRecorder.AudioEncoder.AAC)
+                setOutputFile(file.absolutePath)
+                prepare()
+                start()
+            }
+            _isRecording.value = true
+        } catch (e: Exception) {
+            recorder?.release()
+            recorder = null
+            audioFile = null
         }
-        _isRecording.value = true
     }
 
     private fun stopRecording() {
-        recorder?.apply { stop(); release() }
+        try {
+            recorder?.apply { stop(); release() }
+        } catch (_: Exception) {}
         recorder = null
         _isRecording.value = false
     }
@@ -103,8 +112,8 @@ class NoteViewModel(app: Application, private val sessionId: String) : AndroidVi
 
     override fun onCleared() {
         super.onCleared()
-        recorder?.apply { stop(); release() }
-        player?.apply { stop(); release() }
+        if (_isRecording.value) stopRecording()
+        try { player?.apply { stop(); release() } } catch (_: Exception) {}
     }
 
     companion object {

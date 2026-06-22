@@ -1,5 +1,6 @@
 package com.abhijit.footlog.ui.navigation
 
+import androidx.compose.animation.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -79,7 +80,11 @@ fun AppNavHost(startDestination: Screen) {
         NavHost(
             navController = navController,
             startDestination = startDestination,
-            modifier = Modifier.padding(innerPadding)
+            modifier = Modifier.padding(innerPadding),
+            enterTransition = { fadeIn() + slideInHorizontally { it / 2 } },
+            exitTransition = { fadeOut() + slideOutHorizontally { -it / 2 } },
+            popEnterTransition = { fadeIn() + slideInHorizontally { -it / 2 } },
+            popExitTransition = { fadeOut() + slideOutHorizontally { it / 2 } }
         ) {
             composable<Screen.Home> {
                 HomeScreen(

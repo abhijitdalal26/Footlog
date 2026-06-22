@@ -94,7 +94,7 @@ fun NoteViewScreen(
                     }
                 }
 
-                if (n.content.isNotBlank()) {
+                if (n.type == NoteType.TEXT && n.content.isNotBlank()) {
                     Text(n.content,
                         style = MaterialTheme.typography.bodyLarge,
                         color = textPrimary,

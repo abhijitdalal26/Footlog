@@ -111,7 +111,7 @@ class ActiveTrackingViewModel(
             title = "${activityType.replaceFirstChar { it.uppercase() }}",
             routePoints = state.routePoints
         )
-        viewModelScope.launch { repo.saveSession(session) }
+        viewModelScope.launch(kotlinx.coroutines.NonCancellable) { repo.saveSession(session) }
     }
 
     companion object {

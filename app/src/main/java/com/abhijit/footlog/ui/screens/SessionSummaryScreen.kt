@@ -1,5 +1,7 @@
 package com.abhijit.footlog.ui.screens
 
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
@@ -9,6 +11,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.SessionSummaryViewModel
+import com.abhijit.footlog.ui.components.MapLibreView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -40,7 +43,7 @@ fun SessionSummaryScreen(
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Walk complete") },
+                title = { Text("${(session?.activityType ?: "session").replaceFirstChar { it.uppercase() }} complete") },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
             )
         },
@@ -51,15 +54,26 @@ fun SessionSummaryScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Card(
-                modifier = Modifier.fillMaxWidth().height(200.dp),
+                modifier = Modifier.fillMaxWidth().height(240.dp),
                 shape = MaterialTheme.shapes.medium,
                 colors = CardDefaults.cardColors(containerColor = surfaceColor)
             ) {
                 Box(modifier = Modifier.fillMaxSize()) {
-                    MapPlaceholder(
-                        routeColor = routeColor,
-                        textSecondary = textSecondary
-                    )
+                    if (session != null) {
+                        MapLibreView(
+                            routePoints = session!!.routePoints,
+                            currentLocation = null,
+                            highlights = emptyList(),
+                            routeColor = routeColor,
+                            isInteractive = false,
+                            modifier = Modifier.fillMaxSize()
+                        )
+                    } else {
+                        MapPlaceholder(
+                            routeColor = routeColor,
+                            textSecondary = textSecondary
+                        )
+                    }
                 }
             }
 
@@ -88,10 +102,10 @@ fun SessionSummaryScreen(
                         "%.1f min/km".format(durationMin / (s.distanceMeters / 1000f)) else "—"
 
                     StatChip("%.1f km".format(s.distanceMeters / 1000f), "Distance",
-                        surfaceColor, textPrimary, textSecondary)
+                        surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 0)
                     StatChip("${durationMin}m", "Duration",
-                        surfaceColor, textPrimary, textSecondary)
-                    StatChip(pace, "Pace", surfaceColor, textPrimary, textSecondary)
+                        surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 1)
+                    StatChip(pace, "Pace", surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 2)
                 }
 
                 Row(
@@ -149,16 +163,29 @@ fun StatChip(
     surfaceColor: androidx.compose.ui.graphics.Color,
     textPrimary: androidx.compose.ui.graphics.Color,
     textSecondary: androidx.compose.ui.graphics.Color,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    delayIndex: Int = 0
 ) {
-    Card(
-        modifier = modifier,
-        shape = MaterialTheme.shapes.small,
-        colors = CardDefaults.cardColors(containerColor = surfaceColor)
+    var visible by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        kotlinx.coroutines.delay(delayIndex * 100L)
+        visible = true
+    }
+
+    AnimatedVisibility(
+        visible = visible,
+        enter = fadeIn(tween(400)) + slideInVertically(tween(400)) { it / 2 },
+        modifier = modifier
     ) {
-        Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
-            Text(value, style = MaterialTheme.typography.titleMedium, color = textPrimary)
-            Text(label, style = MaterialTheme.typography.labelSmall, color = textSecondary)
+        Card(
+            shape = MaterialTheme.shapes.small,
+            colors = CardDefaults.cardColors(containerColor = surfaceColor)
+        ) {
+            Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)) {
+                Text(value, style = MaterialTheme.typography.titleMedium, color = textPrimary)
+                Text(label, style = MaterialTheme.typography.labelSmall, color = textSecondary)
+            }
         }
     }
 }
+
