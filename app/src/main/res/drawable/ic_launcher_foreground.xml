@@ -1,30 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
 <vector xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:aapt="http://schemas.android.com/aapt"
     android:width="108dp"
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <path android:pathData="M31,63.928c0,0 6.4,-11 12.1,-13.1c7.2,-2.6 26,-1.4 26,-1.4l38.1,38.1L107,108.928l-32,-1L31,63.928z">
-        <aapt:attr name="android:fillColor">
-            <gradient
-                android:endX="85.84757"
-                android:endY="92.4963"
-                android:startX="42.9492"
-                android:startY="49.59793"
-                android:type="linear">
-                <item
-                    android:color="#44000000"
-                    android:offset="0.0" />
-                <item
-                    android:color="#00000000"
-                    android:offset="1.0" />
-            </gradient>
-        </aapt:attr>
-    </path>
+
+    <!-- Heel — large rounded base -->
     <path
-        android:fillColor="#FFFFFF"
-        android:fillType="nonZero"
-        android:pathData="M65.3,45.828l3.8,-6.6c0.2,-0.4 0.1,-0.9 -0.3,-1.1c-0.4,-0.2 -0.9,-0.1 -1.1,0.3l-3.9,6.7c-6.3,-2.8 -13.4,-2.8 -19.7,0l-3.9,-6.7c-0.2,-0.4 -0.7,-0.5 -1.1,-0.3C38.8,38.328 38.7,38.828 38.9,39.228l3.8,6.6C36.2,49.428 31.7,56.028 31,63.928h46C76.3,56.028 71.8,49.428 65.3,45.828zM43.4,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2c-0.3,-0.7 -0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C45.3,56.528 44.5,57.328 43.4,57.328L43.4,57.328zM64.6,57.328c-0.8,0 -1.5,-0.5 -1.8,-1.2s-0.1,-1.5 0.4,-2.1c0.5,-0.5 1.4,-0.7 2.1,-0.4c0.7,0.3 1.2,1 1.2,1.8C66.5,56.528 65.6,57.328 64.6,57.328L64.6,57.328z"
-        android:strokeWidth="1"
-        android:strokeColor="#00000000" />
+        android:fillColor="#7FA77E"
+        android:pathData="M54,88 C45,88 39,81 39,73 C39,65 45,59 54,59 C63,59 69,65 69,73 C69,81 63,88 54,88 Z" />
+
+    <!-- Ball of foot — bridges heel to toes -->
+    <path
+        android:fillColor="#7FA77E"
+        android:pathData="M40,65 C38,57 44,50 54,48 C64,50 70,57 68,65 Z" />
+
+    <!-- Big toe (leftmost) -->
+    <path
+        android:fillColor="#7FA77E"
+        android:pathData="M41,46 C37.7,46 35,43.3 35,40 C35,36.7 37.7,34 41,34 C44.3,34 47,36.7 47,40 C47,43.3 44.3,46 41,46 Z" />
+
+    <!-- Second toe -->
+    <path
+        android:fillColor="#7FA77E"
+        android:pathData="M50,43 C46.7,43 44,40.3 44,37 C44,33.7 46.7,31 50,31 C53.3,31 56,33.7 56,37 C56,40.3 53.3,43 50,43 Z" />
+
+    <!-- Middle toe (tallest) -->
+    <path
+        android:fillColor="#7FA77E"
+        android:pathData="M59,43 C55.7,43 53,40.3 53,37 C53,33.7 55.7,31 59,31 C62.3,31 65,33.7 65,37 C65,40.3 62.3,43 59,43 Z" />
+
+    <!-- Fourth toe -->
+    <path
+        android:fillColor="#7FA77E"
+        android:pathData="M67,46 C63.7,46 61,43.5 61,40.5 C61,37.5 63.7,35 67,35 C70.3,35 73,37.5 73,40.5 C73,43.5 70.3,46 67,46 Z" />
+
+    <!-- Little toe (rightmost, smallest) -->
+    <path
+        android:fillColor="#7FA77E"
+        android:pathData="M73,52 C70.5,52 68.5,50 68.5,47.5 C68.5,45 70.5,43 73,43 C75.5,43 77.5,45 77.5,47.5 C77.5,50 75.5,52 73,52 Z" />
+
+    <!-- Trail dot 1 — closest, warmest -->
+    <path
+        android:fillColor="#E0945A"
+        android:fillAlpha="0.95"
+        android:pathData="M32,79 C29.5,79 27.5,77 27.5,74.5 C27.5,72 29.5,70 32,70 C34.5,70 36.5,72 36.5,74.5 C36.5,77 34.5,79 32,79 Z" />
+
+    <!-- Trail dot 2 — middle -->
+    <path
+        android:fillColor="#E0945A"
+        android:fillAlpha="0.65"
+        android:pathData="M26,68 C24,68 22.5,66.5 22.5,64.5 C22.5,62.5 24,61 26,61 C28,61 29.5,62.5 29.5,64.5 C29.5,66.5 28,68 26,68 Z" />
+
+    <!-- Trail dot 3 — farthest, faintest -->
+    <path
+        android:fillColor="#E0945A"
+        android:fillAlpha="0.35"
+        android:pathData="M23,57 C21.3,57 20,55.7 20,54 C20,52.3 21.3,51 23,51 C24.7,51 26,52.3 26,54 C26,55.7 24.7,57 23,57 Z" />
+
 </vector>
