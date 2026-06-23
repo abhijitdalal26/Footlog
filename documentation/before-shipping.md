@@ -42,7 +42,6 @@ If it fails:
 
 ---
 
-## Deferred to v2 (not blocking)
+## Deferred to next update (not blocking)
 
-- **Map thumbnails** in History and Routes screens show a placeholder icon — real MapLibre snapshot capture is the proper fix but adds complexity. Fine for v1.
-- **Voice notes** — recording was removed. Existing `VOICE` type entries in Room display as "Voice note" text label. No action needed unless you want to add recording back.
+- **Map thumbnails** in History and Routes screens show a placeholder icon — real MapLibre snapshot capture is the proper fix but adds complexity. Fine for first release.
