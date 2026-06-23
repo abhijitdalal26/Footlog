@@ -13,7 +13,6 @@ import com.abhijit.footlog.util.cellBoundsPolygon
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
-import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraPosition
 import org.maplibre.android.camera.CameraUpdateFactory
 import org.maplibre.android.geometry.LatLng
@@ -24,9 +23,12 @@ import org.maplibre.android.location.modes.RenderMode
 import org.maplibre.android.maps.MapLibreMap
 import org.maplibre.android.maps.MapView
 import org.maplibre.android.maps.Style
+import org.maplibre.android.style.expressions.Expression.get
+import org.maplibre.android.style.layers.CircleLayer
 import org.maplibre.android.style.layers.FillLayer
 import org.maplibre.android.style.layers.LineLayer
 import org.maplibre.android.style.layers.PropertyFactory.*
+import org.maplibre.android.style.layers.SymbolLayer
 import org.maplibre.android.style.sources.GeoJsonSource
 import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
@@ -40,6 +42,9 @@ private const val ROUTE_SOURCE_ID = "route-source"
 private const val ROUTE_LAYER_ID = "route-layer"
 private const val EXPLORE_SOURCE_ID = "explore-source"
 private const val EXPLORE_LAYER_ID = "explore-layer"
+private const val HIGHLIGHTS_SOURCE_ID = "highlights-source"
+private const val HIGHLIGHTS_CIRCLE_LAYER_ID = "highlights-circle"
+private const val HIGHLIGHTS_TEXT_LAYER_ID = "highlights-text"
 
 @Composable
 fun MapLibreView(
@@ -64,8 +69,10 @@ fun MapLibreView(
     val exploreColorHex = remember(routeColor) {
         "#%06X".format(routeColor.copy(alpha = 0.35f).toArgb() and 0xFFFFFF)
     }
+    val highlightColorHex = if (isDark)
+        "#%06X".format(0xE0945A) else "#%06X".format(0xC9783A)
 
-    // Build explored-cells GeoJSON off the main thread when the cell list changes
+    // Build explored-cells GeoJSON off the main thread
     var exploreGeoJson by remember { mutableStateOf<FeatureCollection?>(null) }
     LaunchedEffect(exploredCells) {
         if (exploredCells.isEmpty()) {
@@ -107,7 +114,7 @@ fun MapLibreView(
                             )
                         )
 
-                        // Explored cells fill
+                        // Explored cells fill (below route line)
                         style.addSource(GeoJsonSource(EXPLORE_SOURCE_ID))
                         style.addLayerBelow(
                             FillLayer(EXPLORE_LAYER_ID, EXPLORE_SOURCE_ID).withProperties(
@@ -115,6 +122,26 @@ fun MapLibreView(
                                 fillOpacity(0.55f)
                             ),
                             ROUTE_LAYER_ID
+                        )
+
+                        // Highlight markers: circle background + emoji text
+                        style.addSource(GeoJsonSource(HIGHLIGHTS_SOURCE_ID))
+                        style.addLayer(
+                            CircleLayer(HIGHLIGHTS_CIRCLE_LAYER_ID, HIGHLIGHTS_SOURCE_ID).withProperties(
+                                circleRadius(14f),
+                                circleColor(highlightColorHex),
+                                circleStrokeWidth(2f),
+                                circleStrokeColor("#FFFFFF")
+                            )
+                        )
+                        style.addLayer(
+                            SymbolLayer(HIGHLIGHTS_TEXT_LAYER_ID, HIGHLIGHTS_SOURCE_ID).withProperties(
+                                textField(get("emoji")),
+                                textSize(13f),
+                                textAnchor("center"),
+                                textAllowOverlap(true),
+                                textIgnorePlacement(true)
+                            )
                         )
 
                         val greeneryLayers = listOf(
@@ -151,12 +178,10 @@ fun MapLibreView(
         update = { _ ->
             mapRef?.let { map ->
                 map.getStyle { style ->
-                    // Update route line color
+                    // Route color + geometry
                     style.getLayer(ROUTE_LAYER_ID)?.let { layer ->
                         if (layer is LineLayer) layer.setProperties(lineColor(routeColorHex))
                     }
-
-                    // Update route geometry
                     val routeSource = style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)
                     if (routePoints.size >= 2) {
                         val points = routePoints.map { Point.fromLngLat(it.lng, it.lat) }
@@ -167,7 +192,7 @@ fun MapLibreView(
                         )
                     }
 
-                    // Update explored cells
+                    // Explored cells
                     val exploreSource = style.getSourceAs<GeoJsonSource>(EXPLORE_SOURCE_ID)
                     exploreSource?.setGeoJson(
                         exploreGeoJson ?: FeatureCollection.fromFeatures(emptyList())
@@ -175,16 +200,15 @@ fun MapLibreView(
                     style.getLayer(EXPLORE_LAYER_ID)?.let { layer ->
                         if (layer is FillLayer) layer.setProperties(fillColor(exploreColorHex))
                     }
-                }
 
-                map.clear()
-                highlights.forEach { h ->
-                    map.addMarker(
-                        MarkerOptions()
-                            .position(LatLng(h.lat, h.lng))
-                            .title("${h.emoji} ${h.name}")
-                            .snippet(h.note ?: "")
-                    )
+                    // Highlight markers via GeoJSON — no deprecated addMarker/clear
+                    val highlightSource = style.getSourceAs<GeoJsonSource>(HIGHLIGHTS_SOURCE_ID)
+                    val highlightFeatures = highlights.map { h ->
+                        Feature.fromGeometry(Point.fromLngLat(h.lng, h.lat)).apply {
+                            addStringProperty("emoji", h.emoji)
+                        }
+                    }
+                    highlightSource?.setGeoJson(FeatureCollection.fromFeatures(highlightFeatures))
                 }
 
                 if (!showMyLocation) {

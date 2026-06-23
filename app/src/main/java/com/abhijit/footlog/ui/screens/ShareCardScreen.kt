@@ -26,9 +26,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.graphics.rememberGraphicsLayer
-import androidx.compose.ui.platform.LocalClipboardManager
+import android.content.ClipData
+import androidx.compose.ui.platform.ClipEntry
+import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.core.content.FileProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -56,7 +57,7 @@ fun ShareCardScreen(
     val graphicsLayer = rememberGraphicsLayer()
     val scope = rememberCoroutineScope()
     val context = LocalContext.current
-    val clipboard = LocalClipboardManager.current
+    val clipboard = LocalClipboard.current
 
     Scaffold(
         topBar = {
@@ -140,9 +141,13 @@ fun ShareCardScreen(
                         val durationMin = (s.endTime - s.startTime) / 60000
                         val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
                             .format(Date(s.startTime))
-                        clipboard.setText(
-                            AnnotatedString("%.1f km ${s.activityType} · ${durationMin}m · $dateStr".format(s.distanceMeters / 1000f))
-                        )
+                        val text = "%.1f km ${s.activityType} · ${durationMin}m · $dateStr"
+                            .format(s.distanceMeters / 1000f)
+                        scope.launch {
+                            clipboard.setClipEntry(
+                                ClipEntry(ClipData.newPlainText("Footlog stats", text))
+                            )
+                        }
                     }
                 }
             }

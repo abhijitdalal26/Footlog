@@ -8,9 +8,9 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.DirectionsBike
-import androidx.compose.material.icons.filled.DirectionsRun
-import androidx.compose.material.icons.filled.DirectionsWalk
+import androidx.compose.material.icons.automirrored.filled.DirectionsBike
+import androidx.compose.material.icons.automirrored.filled.DirectionsRun
+import androidx.compose.material.icons.automirrored.filled.DirectionsWalk
 import androidx.compose.material.icons.filled.Map
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.*
@@ -108,7 +108,7 @@ fun HomeScreen(
                 ) {
                     AnimatedActivityCard(
                         label = "Walk",
-                        icon = Icons.Filled.DirectionsWalk,
+                        icon = Icons.AutoMirrored.Filled.DirectionsWalk,
                         bgColor = routeColor,
                         textColor = onPrimary,
                         modifier = Modifier.weight(1f),
@@ -117,7 +117,7 @@ fun HomeScreen(
                     )
                     AnimatedActivityCard(
                         label = "Run",
-                        icon = Icons.Filled.DirectionsRun,
+                        icon = Icons.AutoMirrored.Filled.DirectionsRun,
                         bgColor = routeColor,
                         textColor = onPrimary,
                         modifier = Modifier.weight(1f),
@@ -126,7 +126,7 @@ fun HomeScreen(
                     )
                     AnimatedActivityCard(
                         label = "Cycle",
-                        icon = Icons.Filled.DirectionsBike,
+                        icon = Icons.AutoMirrored.Filled.DirectionsBike,
                         bgColor = routeColor,
                         textColor = onPrimary,
                         modifier = Modifier.weight(1f),
