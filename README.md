@@ -57,6 +57,3 @@ app/src/main/java/com/abhijit/footlog/
   util/           CellUtils (fog-of-war grid), AuthHelper (Google Sign-In)
 ```
 
-## License
-
-Personal project — all rights reserved.
