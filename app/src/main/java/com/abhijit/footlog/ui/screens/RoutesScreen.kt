@@ -7,14 +7,13 @@ import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material3.*
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.collectAsState
-import androidx.compose.runtime.getValue
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.data.entity.SessionEntity
+import com.abhijit.footlog.ui.components.MapLibreView
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.RoutesViewModel
 import java.text.SimpleDateFormat
@@ -27,49 +26,152 @@ fun RoutesScreen(
     vm: RoutesViewModel = viewModel(factory = RoutesViewModel.Factory)
 ) {
     val routes by vm.favoriteRoutes.collectAsState()
+    val exploredCells by vm.exploredCells.collectAsState()
     val isDark = isSystemInDarkTheme()
     val bgColor = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
     val surfaceColor = if (isDark) FootlogColors.surfaceDark else FootlogColors.surfaceLight
     val textPrimary = if (isDark) FootlogColors.textPrimaryDark else FootlogColors.textPrimaryLight
     val textSecondary = if (isDark) FootlogColors.textSecondaryDark else FootlogColors.textSecondaryLight
     val accent = if (isDark) FootlogColors.highlightAccentDark else FootlogColors.highlightAccentLight
+    val routeColor = if (isDark) FootlogColors.routeLineDark else FootlogColors.routeLineLight
+
+    var selectedTab by remember { mutableIntStateOf(0) }
+    val tabs = listOf("Explore", "Saved")
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Your routes") },
+                title = { Text("Routes", color = textPrimary) },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
             )
         },
         containerColor = bgColor
     ) { innerPadding ->
-        if (routes.isEmpty()) {
-            Box(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentAlignment = Alignment.Center
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+        ) {
+            PrimaryTabRow(
+                selectedTabIndex = selectedTab,
+                containerColor = bgColor,
+                contentColor = routeColor
             ) {
-                Text(
-                    "Save a walk as a favorite to see it here",
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textSecondary
-                )
-            }
-        } else {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize().padding(innerPadding),
-                contentPadding = PaddingValues(16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                items(routes, key = { it.id }) { session ->
-                    RouteCard(
-                        session = session,
-                        surfaceColor = surfaceColor,
-                        textPrimary = textPrimary,
-                        textSecondary = textSecondary,
-                        accentColor = accent,
-                        onClick = { onSessionClick(session.id) }
+                tabs.forEachIndexed { index, title ->
+                    Tab(
+                        selected = selectedTab == index,
+                        onClick = { selectedTab = index },
+                        text = {
+                            Text(
+                                title,
+                                color = if (selectedTab == index) routeColor else textSecondary
+                            )
+                        }
                     )
                 }
+            }
+
+            when (selectedTab) {
+                0 -> ExploreTab(
+                    exploredCells = exploredCells,
+                    routeColor = routeColor,
+                    textSecondary = textSecondary
+                )
+                1 -> SavedTab(
+                    routes = routes,
+                    surfaceColor = surfaceColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    accentColor = accent,
+                    onSessionClick = onSessionClick
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExploreTab(
+    exploredCells: List<com.abhijit.footlog.data.entity.ExploredCellEntity>,
+    routeColor: androidx.compose.ui.graphics.Color,
+    textSecondary: androidx.compose.ui.graphics.Color
+) {
+    if (exploredCells.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Go for a walk to start filling your map",
+                style = MaterialTheme.typography.bodyMedium,
+                color = textSecondary
+            )
+        }
+    } else {
+        Column(modifier = Modifier.fillMaxSize()) {
+            MapLibreView(
+                routePoints = emptyList(),
+                currentLocation = null,
+                exploredCells = exploredCells,
+                routeColor = routeColor,
+                isInteractive = true,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+            )
+            Surface(
+                color = if (androidx.compose.foundation.isSystemInDarkTheme())
+                    FootlogColors.surfaceDark else FootlogColors.surfaceLight,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(
+                    "${exploredCells.size} tiles explored · ${
+                        "%.2f".format(exploredCells.size * 625.0 / 1_000_000)
+                    } km²",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = textSecondary,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun SavedTab(
+    routes: List<SessionEntity>,
+    surfaceColor: androidx.compose.ui.graphics.Color,
+    textPrimary: androidx.compose.ui.graphics.Color,
+    textSecondary: androidx.compose.ui.graphics.Color,
+    accentColor: androidx.compose.ui.graphics.Color,
+    onSessionClick: (String) -> Unit
+) {
+    if (routes.isEmpty()) {
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                "Save a walk as a favourite to see it here",
+                style = MaterialTheme.typography.bodyMedium,
+                color = textSecondary
+            )
+        }
+    } else {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            items(routes, key = { it.id }) { session ->
+                RouteCard(
+                    session = session,
+                    surfaceColor = surfaceColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    accentColor = accentColor,
+                    onClick = { onSessionClick(session.id) }
+                )
             }
         }
     }
@@ -98,13 +200,19 @@ private fun RouteCard(
             verticalAlignment = Alignment.CenterVertically
         ) {
             Column(modifier = Modifier.weight(1f)) {
-                Text(session.title.ifBlank { "Route" },
-                    style = MaterialTheme.typography.titleSmall, color = textPrimary)
+                Text(
+                    session.title.ifBlank { "Route" },
+                    style = MaterialTheme.typography.titleSmall,
+                    color = textPrimary
+                )
                 Spacer(Modifier.height(2.dp))
-                Text("$distKm · Last walked $dateStr",
-                    style = MaterialTheme.typography.bodySmall, color = textSecondary)
+                Text(
+                    "$distKm · $dateStr",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textSecondary
+                )
             }
-            Icon(Icons.Filled.Star, contentDescription = "Favorite", tint = accentColor)
+            Icon(Icons.Filled.Star, contentDescription = "Favourite", tint = accentColor)
         }
     }
 }

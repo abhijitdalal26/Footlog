@@ -92,6 +92,7 @@ class SessionRepository(context: Context) {
     }
 
     fun getExploredCellCount(): Flow<Int> = exploredCellDao.getCellCountFlow()
+    fun getAllExploredCells(): Flow<List<ExploredCellEntity>> = exploredCellDao.getAllFlow()
     suspend fun getExploredCellCountOnce(): Int = exploredCellDao.getCellCount()
     suspend fun getAllExploredCellsOnce(): List<ExploredCellEntity> = exploredCellDao.getAll()
 

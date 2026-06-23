@@ -6,8 +6,12 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
+import com.abhijit.footlog.data.entity.ExploredCellEntity
 import com.abhijit.footlog.data.entity.HighlightEntity
 import com.abhijit.footlog.data.entity.LatLngPoint
+import com.abhijit.footlog.util.cellBoundsPolygon
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.maplibre.android.MapLibre
 import org.maplibre.android.annotations.MarkerOptions
 import org.maplibre.android.camera.CameraPosition
@@ -28,17 +32,21 @@ import org.maplibre.geojson.Feature
 import org.maplibre.geojson.FeatureCollection
 import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
+import org.maplibre.geojson.Polygon
 
 private const val STYLE_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
 private const val STYLE_DARK = "https://tiles.openfreemap.org/styles/dark"
 private const val ROUTE_SOURCE_ID = "route-source"
 private const val ROUTE_LAYER_ID = "route-layer"
+private const val EXPLORE_SOURCE_ID = "explore-source"
+private const val EXPLORE_LAYER_ID = "explore-layer"
 
 @Composable
 fun MapLibreView(
     routePoints: List<LatLngPoint>,
     currentLocation: android.location.Location?,
     highlights: List<HighlightEntity> = emptyList(),
+    exploredCells: List<ExploredCellEntity> = emptyList(),
     routeColor: Color,
     showMyLocation: Boolean = false,
     isInteractive: Boolean = true,
@@ -53,6 +61,25 @@ fun MapLibreView(
     val mapParkColor = remember(routeColor) {
         "#%06X".format(routeColor.copy(alpha = 0.4f).toArgb() and 0xFFFFFF)
     }
+    val exploreColorHex = remember(routeColor) {
+        "#%06X".format(routeColor.copy(alpha = 0.35f).toArgb() and 0xFFFFFF)
+    }
+
+    // Build explored-cells GeoJSON off the main thread when the cell list changes
+    var exploreGeoJson by remember { mutableStateOf<FeatureCollection?>(null) }
+    LaunchedEffect(exploredCells) {
+        if (exploredCells.isEmpty()) {
+            exploreGeoJson = null
+            return@LaunchedEffect
+        }
+        exploreGeoJson = withContext(Dispatchers.Default) {
+            val features = exploredCells.map { cell ->
+                val ring = cellBoundsPolygon(cell.cellX, cell.cellY)
+                Feature.fromGeometry(Polygon.fromLngLats(listOf(ring)))
+            }
+            FeatureCollection.fromFeatures(features)
+        }
+    }
 
     val styleUri = if (isDark) STYLE_DARK else STYLE_LIBERTY
 
@@ -64,12 +91,12 @@ fun MapLibreView(
                     mapRef = map
                     map.uiSettings.isRotateGesturesEnabled = false
 
-                    // Set a comfortable zoom before the GPS dot locks in
                     if (showMyLocation) {
                         map.moveCamera(CameraUpdateFactory.zoomTo(15.0))
                     }
 
                     map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
+                        // Route line
                         style.addSource(GeoJsonSource(ROUTE_SOURCE_ID))
                         style.addLayer(
                             LineLayer(ROUTE_LAYER_ID, ROUTE_SOURCE_ID).withProperties(
@@ -78,6 +105,16 @@ fun MapLibreView(
                                 lineCap("round"),
                                 lineJoin("round")
                             )
+                        )
+
+                        // Explored cells fill
+                        style.addSource(GeoJsonSource(EXPLORE_SOURCE_ID))
+                        style.addLayerBelow(
+                            FillLayer(EXPLORE_LAYER_ID, EXPLORE_SOURCE_ID).withProperties(
+                                fillColor(exploreColorHex),
+                                fillOpacity(0.55f)
+                            ),
+                            ROUTE_LAYER_ID
                         )
 
                         val greeneryLayers = listOf(
@@ -90,7 +127,6 @@ fun MapLibreView(
                             }
                         }
 
-                        // Blue GPS dot + camera tracking for active sessions
                         if (showMyLocation) {
                             try {
                                 map.locationComponent.activateLocationComponent(
@@ -115,19 +151,29 @@ fun MapLibreView(
         update = { _ ->
             mapRef?.let { map ->
                 map.getStyle { style ->
+                    // Update route line color
                     style.getLayer(ROUTE_LAYER_ID)?.let { layer ->
-                        if (layer is LineLayer) {
-                            layer.setProperties(lineColor(routeColorHex))
-                        }
+                        if (layer is LineLayer) layer.setProperties(lineColor(routeColorHex))
                     }
-                    val source = style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)
+
+                    // Update route geometry
+                    val routeSource = style.getSourceAs<GeoJsonSource>(ROUTE_SOURCE_ID)
                     if (routePoints.size >= 2) {
                         val points = routePoints.map { Point.fromLngLat(it.lng, it.lat) }
-                        source?.setGeoJson(
+                        routeSource?.setGeoJson(
                             FeatureCollection.fromFeature(
                                 Feature.fromGeometry(LineString.fromLngLats(points))
                             )
                         )
+                    }
+
+                    // Update explored cells
+                    val exploreSource = style.getSourceAs<GeoJsonSource>(EXPLORE_SOURCE_ID)
+                    exploreSource?.setGeoJson(
+                        exploreGeoJson ?: FeatureCollection.fromFeatures(emptyList())
+                    )
+                    style.getLayer(EXPLORE_LAYER_ID)?.let { layer ->
+                        if (layer is FillLayer) layer.setProperties(fillColor(exploreColorHex))
                     }
                 }
 
@@ -141,7 +187,6 @@ fun MapLibreView(
                     )
                 }
 
-                // Manual camera only when location component is not handling it
                 if (!showMyLocation) {
                     currentLocation?.let { loc ->
                         map.animateCamera(

@@ -17,4 +17,7 @@ interface ExploredCellDao {
 
     @Query("SELECT * FROM explored_cells")
     suspend fun getAll(): List<ExploredCellEntity>
+
+    @Query("SELECT * FROM explored_cells")
+    fun getAllFlow(): Flow<List<ExploredCellEntity>>
 }
