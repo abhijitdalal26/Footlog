@@ -15,22 +15,17 @@ keytool -genkey -v -keystore footlog-upload.jks -keyalg RSA -keysize 2048 -valid
 - Add signing config to `app/build.gradle.kts` under `buildTypes { release { ... } }`
 - Store the keystore password somewhere safe (password manager)
 
----
-
-## 2. Add SHA-1 fingerprint to Firebase Console
-
-After generating the keystore, get the release SHA-1:
+Once you have the release keystore, get its SHA-1:
 
 ```bash
 ./gradlew signingReport
 ```
 
-Go to [Firebase Console](https://console.firebase.google.com) → Project settings → Your Android app → Add fingerprint.
-Add both the debug SHA-1 (for dev) and the release SHA-1 (for production Google Sign-In to work).
+Then go to [Firebase Console → Project settings → Your Android app → Add fingerprint](https://console.firebase.google.com/project/learningkotlin-7db3a688/settings/general/android:com.abhijit.footlog) and add the **release** SHA-1. The debug SHA-1 is already registered.
 
 ---
 
-## 3. Verify MapLibre resolves
+## 2. Verify MapLibre resolves
 
 Before submitting, do a clean build and confirm `org.maplibre.gl:android-sdk:11.8.3` resolves from Maven.
 If it fails:
@@ -39,22 +34,11 @@ If it fails:
 
 ---
 
-## 4. Deploy Firestore security rules
+## Done — no action needed
 
-The rules file is at `firestore.rules`. Deploy it before going live:
-
-```bash
-npx firebase-tools@latest deploy --only firestore:rules --project learningkotlin-7db3a688
-```
-
-Without this, Firestore is either open or locked depending on your current console state.
-
----
-
-## 5. Enable Crashlytics in Firebase Console
-
-Crashlytics is wired in code — it auto-enables in release builds. But the Firebase Console needs at least one crash report before the dashboard activates.
-After first release build install, force a test crash or just use the app — the dashboard will appear within a few minutes.
+- ✅ **Firestore security rules** deployed (`users/{uid}/**` locked to matching auth UID)
+- ✅ **Debug SHA-1** already registered in Firebase Console
+- ✅ **Crashlytics** — wired in code, auto-enables on release builds. Dashboard activates after first crash report lands.
 
 ---
 
