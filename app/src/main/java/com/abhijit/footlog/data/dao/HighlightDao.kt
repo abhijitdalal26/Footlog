@@ -14,4 +14,7 @@ interface HighlightDao {
 
     @Query("SELECT * FROM highlights WHERE id = :id")
     fun getByIdFlow(id: String): Flow<HighlightEntity?>
+
+    @Query("SELECT * FROM highlights")
+    suspend fun getAll(): List<HighlightEntity>
 }

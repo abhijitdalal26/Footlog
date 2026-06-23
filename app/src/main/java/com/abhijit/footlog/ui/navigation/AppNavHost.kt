@@ -89,7 +89,13 @@ fun AppNavHost(startDestination: Screen) {
             composable<Screen.Home> {
                 HomeScreen(
                     onStartActivity = { type -> navController.navigate(Screen.ActiveTracking(type)) },
-                    onSessionClick = { id -> navController.navigate(Screen.SessionDetail(id)) }
+                    onSessionClick = { id -> navController.navigate(Screen.SessionDetail(id)) },
+                    onProfileClick = { navController.navigate(Screen.Profile) }
+                )
+            }
+            composable<Screen.Profile> {
+                com.abhijit.footlog.ui.screens.ProfileScreen(
+                    onBack = { navController.popBackStack() }
                 )
             }
             composable<Screen.History> {

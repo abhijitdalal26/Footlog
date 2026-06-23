@@ -15,4 +15,5 @@ sealed interface Screen {
     @Serializable data class NoteView(val sessionId: String) : Screen
     @Serializable data class HighlightDetail(val highlightId: String) : Screen
     @Serializable object Onboarding : Screen
+    @Serializable object Profile : Screen
 }

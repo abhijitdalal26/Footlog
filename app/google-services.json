@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "1056161409729",
+    "project_id": "learningkotlin-7db3a688",
+    "storage_bucket": "learningkotlin-7db3a688.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1056161409729:android:644276a61785ec2f47c240",
+        "android_client_info": {
+          "package_name": "com.abhijit.footlog"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "1056161409729-hn2ds978tbq2abhd20vo54tls28ljeev.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA76z8cjm17ob2ew0hHob9dPD3tyui70-U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1056161409729-hn2ds978tbq2abhd20vo54tls28ljeev.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

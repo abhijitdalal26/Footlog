@@ -23,7 +23,8 @@ data class TrackingUiState(
     val elapsedSeconds: Long = 0L,
     val routePoints: List<LatLngPoint> = emptyList(),
     val highlights: List<HighlightEntity> = emptyList(),
-    val currentLocation: Location? = null
+    val currentLocation: Location? = null,
+    val countdownSeconds: Int = 3
 )
 
 class ActiveTrackingViewModel(
@@ -35,12 +36,30 @@ class ActiveTrackingViewModel(
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
-    private val startTime = System.currentTimeMillis()
+    private var actualStartTime = 0L
     private var lastLocation: Location? = null
     private var timerJob: Job? = null
 
     init {
-        app.startForegroundService(Intent(app, LocationTrackingService::class.java))
+        startCountdown()
+    }
+
+    private fun startCountdown() {
+        viewModelScope.launch {
+            for (i in 3 downTo 1) {
+                _uiState.update { it.copy(countdownSeconds = i) }
+                delay(1000L)
+            }
+            _uiState.update { it.copy(countdownSeconds = 0) }
+            beginTracking()
+        }
+    }
+
+    private fun beginTracking() {
+        actualStartTime = System.currentTimeMillis()
+        getApplication<Application>().startForegroundService(
+            Intent(getApplication(), LocationTrackingService::class.java)
+        )
         startTimer()
         collectLocation()
     }
@@ -57,8 +76,12 @@ class ActiveTrackingViewModel(
     private fun collectLocation() {
         viewModelScope.launch {
             LocationTrackingService.locationFlow.filterNotNull().collect { loc ->
+                if (loc.accuracy > 50f) return@collect
+
                 val prev = lastLocation
                 val added = if (prev != null) prev.distanceTo(loc) else 0f
+                if (prev != null && added < 2f) return@collect
+
                 lastLocation = loc
                 val newPoint = LatLngPoint(loc.latitude, loc.longitude)
                 _uiState.update { s ->
@@ -105,10 +128,10 @@ class ActiveTrackingViewModel(
         val session = SessionEntity(
             id = state.sessionId,
             activityType = activityType,
-            startTime = startTime,
+            startTime = actualStartTime,
             endTime = System.currentTimeMillis(),
             distanceMeters = state.distanceMeters,
-            title = "${activityType.replaceFirstChar { it.uppercase() }}",
+            title = activityType.replaceFirstChar { it.uppercase() },
             routePoints = state.routePoints
         )
         viewModelScope.launch(kotlinx.coroutines.NonCancellable) { repo.saveSession(session) }

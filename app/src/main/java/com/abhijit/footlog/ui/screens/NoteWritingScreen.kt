@@ -1,22 +1,16 @@
 package com.abhijit.footlog.ui.screens
 
-import android.Manifest
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.core.*
-import androidx.compose.foundation.border
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Mic
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
@@ -29,42 +23,41 @@ fun NoteWritingScreen(
     onBack: () -> Unit,
     vm: NoteViewModel = viewModel(factory = NoteViewModel.Factory(sessionId))
 ) {
-    val isRecording by vm.isRecording.collectAsState()
-    val transcription by vm.transcription.collectAsState()
     val isDark = isSystemInDarkTheme()
     val bgColor = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
     val textPrimary = if (isDark) FootlogColors.textPrimaryDark else FootlogColors.textPrimaryLight
     val textSecondary = if (isDark) FootlogColors.textSecondaryDark else FootlogColors.textSecondaryLight
     val routeColor = if (isDark) FootlogColors.routeLineDark else FootlogColors.routeLineLight
-    val accent = if (isDark) FootlogColors.highlightAccentDark else FootlogColors.highlightAccentLight
-    val onPrimary = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
 
-    var typingMode by remember { mutableStateOf(false) }
-    var typedText by remember { mutableStateOf("") }
+    var text by remember { mutableStateOf("") }
+    val focusRequester = remember { FocusRequester() }
 
-    val recordingPermLauncher = rememberLauncherForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { granted -> if (granted) vm.toggleRecording() }
-
-    BackHandler(enabled = isRecording) {
-        vm.toggleRecording()
-        onBack()
-    }
-
-    val pulse = rememberInfiniteTransition(label = "pulse")
-    val scale by pulse.animateFloat(
-        initialValue = 1f, targetValue = 1.15f,
-        animationSpec = infiniteRepeatable(tween(600), RepeatMode.Reverse),
-        label = "scale"
-    )
+    LaunchedEffect(Unit) { focusRequester.requestFocus() }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Add a note") },
+                title = {},
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "Back",
+                            tint = textPrimary
+                        )
+                    }
+                },
+                actions = {
+                    TextButton(
+                        onClick = {
+                            if (text.isNotBlank()) vm.saveTextNote(text)
+                            onBack()
+                        }
+                    ) {
+                        Text(
+                            if (text.isNotBlank()) "Save" else "Done",
+                            color = if (text.isNotBlank()) routeColor else textSecondary
+                        )
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
@@ -72,84 +65,31 @@ fun NoteWritingScreen(
         },
         containerColor = bgColor
     ) { innerPadding ->
-        Column(
-            modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(24.dp)
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(innerPadding)
+                .padding(horizontal = 20.dp, vertical = 8.dp)
         ) {
-            Spacer(Modifier.weight(1f))
-
-            if (!typingMode) {
-                Box(contentAlignment = Alignment.Center) {
-                    if (isRecording) {
-                        Box(
-                            modifier = Modifier
-                                .size(100.dp)
-                                .scale(scale)
-                                .border(2.dp, accent.copy(alpha = 0.5f), CircleShape)
+            BasicTextField(
+                value = text,
+                onValueChange = { text = it },
+                modifier = Modifier
+                    .fillMaxSize()
+                    .focusRequester(focusRequester),
+                textStyle = MaterialTheme.typography.bodyLarge.copy(color = textPrimary),
+                cursorBrush = SolidColor(routeColor),
+                decorationBox = { innerTextField ->
+                    if (text.isEmpty()) {
+                        Text(
+                            "What's on your mind?",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = textSecondary.copy(alpha = 0.5f)
                         )
                     }
-                    FilledIconButton(
-                        onClick = {
-                            recordingPermLauncher.launch(Manifest.permission.RECORD_AUDIO)
-                        },
-                        modifier = Modifier.size(80.dp),
-                        colors = IconButtonDefaults.filledIconButtonColors(
-                            containerColor = if (isRecording) accent else routeColor,
-                            contentColor = onPrimary
-                        )
-                    ) {
-                        Icon(Icons.Filled.Mic, contentDescription = "Record",
-                            modifier = Modifier.size(36.dp))
-                    }
+                    innerTextField()
                 }
-
-                if (transcription.isNotBlank()) {
-                    Text(transcription, style = MaterialTheme.typography.bodyLarge,
-                        color = textPrimary)
-                }
-
-                TextButton(onClick = { typingMode = true }) {
-                    Text("or type instead", color = textSecondary)
-                }
-            } else {
-                OutlinedTextField(
-                    value = typedText,
-                    onValueChange = { typedText = it },
-                    modifier = Modifier.fillMaxWidth().height(180.dp),
-                    placeholder = { Text("Write your note here...") },
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = routeColor,
-                        unfocusedBorderColor = if (isDark) FootlogColors.borderDark else FootlogColors.borderLight,
-                        focusedTextColor = textPrimary,
-                        unfocusedTextColor = textPrimary
-                    )
-                )
-                TextButton(onClick = { typingMode = false }) {
-                    Text("use voice instead", color = textSecondary)
-                }
-            }
-
-            Spacer(Modifier.weight(1f))
-
-            val canSave = (typingMode && typedText.isNotBlank()) ||
-                    (!typingMode && !isRecording && transcription.isNotBlank()) ||
-                    (!typingMode && isRecording)
-            Button(
-                onClick = {
-                    if (typingMode) {
-                        vm.saveTextNote(typedText)
-                    } else {
-                        if (isRecording) vm.toggleRecording()
-                        vm.saveVoiceNote()
-                    }
-                    onBack()
-                },
-                enabled = canSave,
-                modifier = Modifier.fillMaxWidth(),
-                shape = MaterialTheme.shapes.small,
-                colors = ButtonDefaults.buttonColors(containerColor = routeColor, contentColor = onPrimary)
-            ) { Text("Save") }
+            )
         }
     }
 }

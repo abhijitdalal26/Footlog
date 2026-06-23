@@ -10,12 +10,30 @@ import com.abhijit.footlog.data.repository.SessionRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SessionRepository(app)
 
     val recentSessions: StateFlow<List<SessionEntity>> = repo.getRecentSessions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    private val prefs = com.abhijit.footlog.data.preferences.AppPreferences(app)
+
+    val userName = prefs.userName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val profilePhotoUri = prefs.profilePhotoUri.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+
+    fun setProfilePhoto(uri: String?) {
+        viewModelScope.launch {
+            prefs.setProfilePhotoUri(uri)
+        }
+    }
+    
+    fun setUserProfile(name: String?, email: String?, photoUri: String?) {
+        viewModelScope.launch {
+            prefs.setUserProfile(name, email, photoUri)
+        }
+    }
 
     companion object {
         val Factory = object : ViewModelProvider.Factory {

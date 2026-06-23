@@ -14,4 +14,7 @@ interface ExploredCellDao {
 
     @Query("SELECT COUNT(*) FROM explored_cells")
     suspend fun getCellCount(): Int
+
+    @Query("SELECT * FROM explored_cells")
+    suspend fun getAll(): List<ExploredCellEntity>
 }

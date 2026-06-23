@@ -2,10 +2,10 @@ package com.abhijit.footlog.ui.screens
 
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.Pause
-import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,22 +26,19 @@ fun NoteViewScreen(
     vm: NoteViewModel = viewModel(factory = NoteViewModel.Factory(sessionId))
 ) {
     val note by vm.existingNote.collectAsState()
-    val isPlaying by vm.isPlaying.collectAsState()
     val isDark = isSystemInDarkTheme()
     val bgColor = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
-    val surfaceColor = if (isDark) FootlogColors.surfaceDark else FootlogColors.surfaceLight
     val textPrimary = if (isDark) FootlogColors.textPrimaryDark else FootlogColors.textPrimaryLight
     val textSecondary = if (isDark) FootlogColors.textSecondaryDark else FootlogColors.textSecondaryLight
-    val routeColor = if (isDark) FootlogColors.routeLineDark else FootlogColors.routeLineLight
-    val onPrimary = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { Text("Note") },
+                title = { Text("Note", color = textPrimary) },
                 navigationIcon = {
                     IconButton(onClick = onBack) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back")
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "Back",
+                            tint = textPrimary)
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
@@ -51,58 +48,40 @@ fun NoteViewScreen(
     ) { innerPadding ->
         note?.let { n ->
             Column(
-                modifier = Modifier.fillMaxSize().padding(innerPadding).padding(24.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.spacedBy(24.dp)
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp, vertical = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                val dateStr = SimpleDateFormat("MMM d, yyyy · h:mm a", Locale.getDefault())
-                    .format(Date(n.createdAt))
-                Text(dateStr, style = MaterialTheme.typography.bodySmall, color = textSecondary)
-
-                if (n.type == NoteType.VOICE) {
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = MaterialTheme.shapes.medium,
-                        colors = CardDefaults.cardColors(containerColor = surfaceColor)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(16.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(16.dp)
-                        ) {
-                            FilledIconButton(
-                                onClick = { vm.togglePlayback() },
-                                colors = IconButtonDefaults.filledIconButtonColors(
-                                    containerColor = routeColor, contentColor = onPrimary)
-                            ) {
-                                Icon(
-                                    if (isPlaying) Icons.Filled.Pause else Icons.Filled.PlayArrow,
-                                    contentDescription = if (isPlaying) "Pause" else "Play"
-                                )
-                            }
-                            Column {
-                                Text("Voice note", style = MaterialTheme.typography.bodyMedium,
-                                    color = textPrimary)
-                                LinearProgressIndicator(
-                                    progress = { if (isPlaying) 0.5f else 0f },
-                                    modifier = Modifier.fillMaxWidth(),
-                                    color = routeColor,
-                                    trackColor = if (isDark) FootlogColors.borderDark else FootlogColors.borderLight
-                                )
-                            }
-                        }
-                    }
-                }
+                Text(
+                    SimpleDateFormat("MMMM d, yyyy · h:mm a", Locale.getDefault())
+                        .format(Date(n.createdAt)),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = textSecondary
+                )
 
                 if (n.type == NoteType.TEXT && n.content.isNotBlank()) {
-                    Text(n.content,
+                    Text(
+                        text = n.content,
                         style = MaterialTheme.typography.bodyLarge,
                         color = textPrimary,
-                        modifier = Modifier.fillMaxWidth())
+                        lineHeight = MaterialTheme.typography.bodyLarge.lineHeight * 1.4f
+                    )
+                } else if (n.type == NoteType.VOICE) {
+                    Text(
+                        "Voice note",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = textSecondary
+                    )
                 }
             }
-        } ?: Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-            Text("No note found", color = textSecondary)
+        } ?: Box(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Text("No note yet", color = textSecondary, style = MaterialTheme.typography.bodyMedium)
         }
     }
 }

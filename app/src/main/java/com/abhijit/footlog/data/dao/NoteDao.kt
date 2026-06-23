@@ -17,4 +17,7 @@ interface NoteDao {
 
     @Query("SELECT COUNT(*) FROM notes WHERE sessionId = :sessionId")
     fun hasNoteFlow(sessionId: String): Flow<Boolean>
+
+    @Query("SELECT * FROM notes")
+    suspend fun getAll(): List<NoteEntity>
 }

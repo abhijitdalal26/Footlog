@@ -23,6 +23,12 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.HomeViewModel
 import com.abhijit.footlog.data.entity.SessionEntity
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.filled.AccountCircle
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import coil.compose.AsyncImage
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -32,6 +38,7 @@ import java.util.Locale
 fun HomeScreen(
     onStartActivity: (String) -> Unit,
     onSessionClick: (String) -> Unit,
+    onProfileClick: () -> Unit,
     vm: HomeViewModel = viewModel(factory = HomeViewModel.Factory)
 ) {
     val sessions by vm.recentSessions.collectAsState()
@@ -42,20 +49,46 @@ fun HomeScreen(
     val routeColor = if (isDark) FootlogColors.routeLineDark else FootlogColors.routeLineLight
     val onPrimary = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
 
+    val userName by vm.userName.collectAsState()
+    val profilePhotoUri by vm.profilePhotoUri.collectAsState()
+
     Scaffold(
         topBar = {
             TopAppBar(
                 title = {
                     Column {
-                        Text("Good to see you", style = MaterialTheme.typography.titleMedium)
-                        Text("Ready to move?", style = MaterialTheme.typography.bodySmall,
-                            color = textSecondary)
+                        Text(
+                            if (userName != null) "Hi, $userName" else "Good to see you",
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            "Ready to move?",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textSecondary
+                        )
                     }
                 },
                 actions = {
-                    IconButton(onClick = {}) {
-                        Icon(Icons.Filled.Settings, contentDescription = "Settings",
-                            tint = textSecondary)
+                    if (profilePhotoUri != null) {
+                        AsyncImage(
+                            model = profilePhotoUri,
+                            contentDescription = "Profile",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .padding(end = 16.dp)
+                                .size(36.dp)
+                                .clip(CircleShape)
+                                .clickable { onProfileClick() }
+                        )
+                    } else {
+                        IconButton(onClick = onProfileClick) {
+                            Icon(
+                                Icons.Filled.AccountCircle,
+                                contentDescription = "Profile",
+                                tint = textSecondary,
+                                modifier = Modifier.size(32.dp)
+                            )
+                        }
                     }
                 },
                 colors = TopAppBarDefaults.topAppBarColors(containerColor = bgColor)
