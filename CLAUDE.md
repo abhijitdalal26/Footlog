@@ -1,6 +1,6 @@
 # Footlog — Android App
 
-Privacy-first walk/run/cycle tracker with session journaling, point-tagged highlights (cafes, shops, custom spots), and a lifetime fog-of-war exploration map. Native Android, Kotlin + Jetpack Compose.
+Walk/run/cycle tracker with session journaling, point-tagged highlights (cafes, shops, custom spots), and a lifetime fog-of-war exploration map. Native Android, Kotlin + Jetpack Compose.
 
 ## Project identity
 

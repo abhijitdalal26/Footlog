@@ -1,6 +1,6 @@
 # Footlog
 
-A privacy-first activity tracker for Android. Record walks, runs, and cycles, journal your sessions, pin highlights along the route, and watch your lifetime exploration map fill in over time.
+An activity tracker for Android. Record walks, runs, and cycles, journal your sessions, pin highlights along the route, and watch your lifetime exploration map fill in over time.
 
 ## Features
 
@@ -10,7 +10,7 @@ A privacy-first activity tracker for Android. Record walks, runs, and cycles, jo
 - Lifetime fog-of-war exploration map built from every route you've taken
 - Share session summary cards
 - Google Sign-In with cross-device sync via Firestore
-- Fully works offline — all data stored locally in Room, synced to cloud when signed in
+- Works offline — all data stored locally in Room, synced to cloud when signed in
 
 ## Tech stack
 
