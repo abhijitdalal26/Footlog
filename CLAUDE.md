@@ -19,19 +19,20 @@ Walk/run/cycle tracker with session journaling, point-tagged highlights (cafes, 
 ./gradlew signingReport          # get SHA-1 fingerprint
 ```
 
-## Build status — 6 PHASES + PROFILE + FIREBASE COMPLETE
+## Build status — SHIP-READY (minus upload keystore)
 
-13 navigation destinations built and compiling. `assembleDebug` passes clean.
+13 navigation destinations built and compiling. `assembleDebug` passes clean with zero warnings.
 
 ### What's built
 - **Phase 1:** `FootlogColors`, `FootlogTypography`, type-safe Navigation 2.9 routes (`Screen.kt`), `AppNavHost`, `DataStore` onboarding flag
-- **Phase 2:** Room DB (`SessionEntity`, `NoteEntity`, `HighlightEntity`, `ExploredCellEntity`), `LocationTrackingService` (foreground, FusedLocation 3s interval), `HomeScreen`, `ActiveTrackingScreen`, `SessionSummaryScreen` + ViewModels
+- **Phase 2:** Room DB (`SessionEntity`, `NoteEntity`, `HighlightEntity`, `ExploredCellEntity`), `LocationTrackingService` (foreground, FusedLocation 3s interval, callbacks on HandlerThread), `HomeScreen`, `ActiveTrackingScreen`, `SessionSummaryScreen` + ViewModels
 - **Phase 3:** `HistoryScreen` (date-grouped), `SessionDetailScreen`
-- **Phase 4:** `NoteWritingScreen` (text-only BasicTextField), `NoteViewScreen`, `HighlightTagSheet` (ModalBottomSheet), `HighlightDetailScreen`, camera system intent
-- **Phase 5:** `RoutesScreen`, `StatsScreen` (Canvas bar chart, consecutive-day streak, km² from ExploredCells)
+- **Phase 4:** `NoteWritingScreen` (text-only), `NoteViewScreen`, `HighlightTagSheet` (ModalBottomSheet), `HighlightDetailScreen`, camera system intent
+- **Phase 5:** `RoutesScreen` (Explore tab with fog-of-war map + Saved tab), `StatsScreen` (Canvas bar chart, consecutive-day streak, km² from ExploredCells)
 - **Phase 6:** `ShareCardScreen` (GraphicsLayer bitmap capture + FileProvider), `OnboardingScreen` (HorizontalPager 3 pages)
 - **Profile:** `ProfileScreen` (local name + photo picker, DataStore-backed), `ProfileViewModel`, avatar in HomeScreen TopAppBar
-- **Firebase:** Google Sign-In (CredentialManager → Firebase Auth), Firestore write-through sync, Crashlytics crash reporting, `FootlogApplication` class
+- **Firebase:** Google Sign-In (CredentialManager → Firebase Auth), Firestore write-through sync, Crashlytics crash reporting, `FootlogApplication` class. Rules deployed. Debug SHA-1 registered.
+- **Polish (2026-06-23):** Zero compiler warnings, Room proper migrations (`MIGRATION_1_2`, `exportSchema = true`, schema at `app/schemas/`), GPS callbacks on `HandlerThread`, fog-of-war GeoJSON overlay on MapLibre
 
 ### App icon
 - **Foreground (`ic_launcher_foreground.xml`):** Geometric footprint from SVGs — 2 ellipses (foot body + heel) + 5 circles (toes), all `#7FA77E`
@@ -39,11 +40,9 @@ Walk/run/cycle tracker with session journaling, point-tagged highlights (cafes, 
 - Source SVGs in `app logo svg/` — `footlog_footprint.svg` (foreground), `footlog_background.svg` (background)
 - Adaptive icon wired in `mipmap-anydpi/ic_launcher.xml` with `<monochrome>` support
 
-### Bucket list (needs manual work before shipping)
-- **MapLibre version** — using `org.maplibre.gl:android-sdk:11.8.3`. If Gradle can't resolve it, check the MapLibre GitHub releases and update `libs.versions.toml`
-- **MapLibre tile styles** — dark: `https://tiles.openfreemap.org/styles/dark`, light: `https://tiles.openfreemap.org/styles/liberty`
-- **Upload keystore** — generate and store outside project folder for Play Store release
-- **Map thumbnails in History/Routes** — placeholder icon only; real snapshot capture deferred to next update
+### Before shipping — see `documentation/before-shipping.md`
+- **Upload keystore** — only remaining blocker. Generate with `keytool`, store outside project, add release SHA-1 to Firebase Console.
+- **Map thumbnails** — placeholder icon in History/Routes; deferred to next update
 
 ## Key files
 
