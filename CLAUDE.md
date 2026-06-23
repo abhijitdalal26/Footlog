@@ -43,11 +43,8 @@ Walk/run/cycle tracker with session journaling, point-tagged highlights (cafes, 
 - **MapLibre version** — using `org.maplibre.gl:android-sdk:11.8.3`. If Gradle can't resolve it, check the MapLibre GitHub releases and update `libs.versions.toml`
 - **MapLibre tile styles** — dark: `https://tiles.openfreemap.org/styles/dark`, light: `https://tiles.openfreemap.org/styles/liberty`
 - **Upload keystore** — generate and store outside project folder for Play Store release
-- **Fog-of-war visualization** — `ExploredCell` table populated during tracking, Canvas overlay not yet built
 - **Notes are text-only** — voice recording removed from NoteWritingScreen; existing VOICE type NoteEntities display as "Voice note" label
 - **Map thumbnails in History/Routes** — placeholder icon only; real snapshot capture deferred to v2
-- **Room migrations** — `fallbackToDestructiveMigration` is active (dev mode). Before Play Store, replace with proper `addMigrations()` objects and set `exportSchema = true` with schema output dir in `build.gradle.kts`
-- **Location callbacks on mainLooper** — `LocationTrackingService` calls `requestLocationUpdates(..., mainLooper)`. Move to a `HandlerThread` for production to avoid potential UI jank
 
 ## Key files
 
