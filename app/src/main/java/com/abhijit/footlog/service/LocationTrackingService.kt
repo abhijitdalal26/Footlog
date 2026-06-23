@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Intent
 import android.location.Location
+import android.os.HandlerThread
 import android.os.IBinder
 import androidx.core.app.NotificationCompat
 import com.google.android.gms.location.*
@@ -23,6 +24,7 @@ class LocationTrackingService : Service() {
     }
 
     private lateinit var fusedClient: FusedLocationProviderClient
+    private val locationHandlerThread = HandlerThread("LocationCallbackThread")
     private val locationRequest = LocationRequest.Builder(Priority.PRIORITY_HIGH_ACCURACY, 3000L)
         .setMinUpdateIntervalMillis(1500L)
         .build()
@@ -36,6 +38,7 @@ class LocationTrackingService : Service() {
     override fun onCreate() {
         super.onCreate()
         fusedClient = LocationServices.getFusedLocationProviderClient(this)
+        locationHandlerThread.start()
         createNotificationChannel()
     }
 
@@ -43,7 +46,7 @@ class LocationTrackingService : Service() {
         startForeground(NOTIFICATION_ID, buildNotification())
         isRunning = true
         try {
-            fusedClient.requestLocationUpdates(locationRequest, locationCallback, mainLooper)
+            fusedClient.requestLocationUpdates(locationRequest, locationCallback, locationHandlerThread.looper)
         } catch (_: SecurityException) {}
         return START_STICKY
     }
@@ -51,6 +54,7 @@ class LocationTrackingService : Service() {
     override fun onDestroy() {
         super.onDestroy()
         fusedClient.removeLocationUpdates(locationCallback)
+        locationHandlerThread.quitSafely()
         _locationFlow.value = null
         isRunning = false
     }

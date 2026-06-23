@@ -46,6 +46,21 @@ Autonomous build log — tracks what was worked on, when, and what changed each 
 
 ---
 
+## 2026-06-23 13:29 — Task 4: LocationTrackingService — move callbacks to HandlerThread
+
+**Status:** Done (13:29 → 13:55, build clean)
+
+**What:** GPS location callbacks were firing on `mainLooper`, risking UI jank under load. Moved to a dedicated background `HandlerThread` so callbacks never touch the main thread.
+
+**Changes — `LocationTrackingService.kt`:**
+- Added `HandlerThread("LocationCallbackThread")` as a property
+- `onCreate()` — `locationHandlerThread.start()` before requesting updates
+- `onStartCommand()` — `requestLocationUpdates(..., locationHandlerThread.looper)` instead of `mainLooper`
+- `onDestroy()` — `locationHandlerThread.quitSafely()` (drains pending messages before stopping)
+- `MutableStateFlow.value = it` inside the callback is thread-safe — no other changes needed
+
+---
+
 ## Planned tasks
 
 | # | Task | Status |
@@ -53,4 +68,4 @@ Autonomous build log — tracks what was worked on, when, and what changed each 
 | 1 | Fog-of-war map visualization | done |
 | 2 | Fix deprecation warnings (MapLibreView markers, AutoMirrored icons, LocalClipboard) | done |
 | 3 | Room proper migrations + exportSchema | done |
-| 4 | LocationTrackingService — move callbacks to HandlerThread | pending |
+| 4 | LocationTrackingService — move callbacks to HandlerThread | done |
