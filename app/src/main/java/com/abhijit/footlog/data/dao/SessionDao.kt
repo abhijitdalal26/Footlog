@@ -42,6 +42,12 @@ interface SessionDao {
     @Query("SELECT SUM(distanceMeters) FROM sessions WHERE startTime >= :startMs AND startTime < :endMs")
     suspend fun getDistanceBetween(startMs: Long, endMs: Long): Float?
 
+    @Query("SELECT SUM(distanceMeters) FROM sessions WHERE startTime >= :startMs AND startTime < :endMs")
+    fun getTodayDistanceFlow(startMs: Long, endMs: Long): Flow<Float?>
+
+    @Query("SELECT MAX(distanceMeters) FROM sessions WHERE id != :excludeId")
+    suspend fun getMaxDistanceExcluding(excludeId: String): Float?
+
     @Delete
     suspend fun delete(session: SessionEntity)
 }

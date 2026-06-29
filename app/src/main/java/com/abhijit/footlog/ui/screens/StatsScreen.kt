@@ -5,6 +5,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.BarChart
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -17,7 +19,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.StatsViewModel
-import java.util.Calendar
+import java.time.LocalDate
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -42,6 +44,31 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
         },
         containerColor = bgColor
     ) { innerPadding ->
+        if (stats.totalSessions == 0) {
+            Box(
+                modifier = Modifier.fillMaxSize().padding(innerPadding),
+                contentAlignment = Alignment.Center
+            ) {
+                Column(
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Icon(
+                        Icons.Filled.BarChart,
+                        contentDescription = null,
+                        modifier = Modifier.size(56.dp),
+                        tint = textSecondary.copy(alpha = 0.35f)
+                    )
+                    Text("No data yet", style = MaterialTheme.typography.titleMedium,
+                        color = textSecondary)
+                    Text("Complete a session to see your stats",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = textSecondary.copy(alpha = 0.6f))
+                }
+            }
+            return@Scaffold
+        }
+
         Column(
             modifier = Modifier.fillMaxSize().padding(innerPadding).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -78,19 +105,51 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("%.1f km".format(stats.totalDistanceMeters / 1000f), "Total distance",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 0)
-                StatCard("${stats.totalSessions}", "Sessions",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 1)
+                StatCard(
+                    value = stats.totalDistanceMeters / 1000f,
+                    label = "Total distance",
+                    format = { "%.1f km".format(it) },
+                    surfaceColor = surfaceColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    modifier = Modifier.weight(1f),
+                    delayIndex = 0
+                )
+                StatCard(
+                    value = stats.totalSessions.toFloat(),
+                    label = "Sessions",
+                    format = { "${it.toInt()}" },
+                    surfaceColor = surfaceColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    modifier = Modifier.weight(1f),
+                    delayIndex = 1
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                StatCard("${stats.currentStreak} days", "Streak",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 2)
-                StatCard("%.2f km²".format(stats.exploredAreaKm2), "Areas explored",
-                    surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 3)
+                StatCard(
+                    value = stats.currentStreak.toFloat(),
+                    label = "Streak",
+                    format = { "${it.toInt()} days" },
+                    surfaceColor = surfaceColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    modifier = Modifier.weight(1f),
+                    delayIndex = 2
+                )
+                StatCard(
+                    value = stats.exploredAreaKm2.toFloat(),
+                    label = "Areas explored",
+                    format = { "%.2f km²".format(it) },
+                    surfaceColor = surfaceColor,
+                    textPrimary = textPrimary,
+                    textSecondary = textSecondary,
+                    modifier = Modifier.weight(1f),
+                    delayIndex = 3
+                )
             }
         }
     }
@@ -98,10 +157,10 @@ fun StatsScreen(vm: StatsViewModel = viewModel(factory = StatsViewModel.Factory)
 
 private fun last7DayLabels(): List<String> {
     val letters = listOf("S", "M", "T", "W", "T", "F", "S")
-    val cal = Calendar.getInstance()
+    val today = LocalDate.now()
     return (6 downTo 0).map { daysAgo ->
-        cal.timeInMillis = System.currentTimeMillis() - daysAgo * 86400000L
-        letters[cal.get(Calendar.DAY_OF_WEEK) - 1]
+        val dayOfWeek = today.minusDays(daysAgo.toLong()).dayOfWeek
+        letters[dayOfWeek.value % 7]
     }
 }
 
@@ -114,7 +173,7 @@ private fun WeeklyBarChart(
 ) {
     val maxDist = distances.maxOrNull()?.takeIf { it > 0f } ?: 1f
     val days = remember { last7DayLabels() }
-    
+
     val animProgress = remember { Animatable(0f) }
     LaunchedEffect(distances) {
         animProgress.animateTo(1f, animationSpec = tween(1000, easing = FastOutSlowInEasing))
@@ -138,15 +197,13 @@ private fun WeeklyBarChart(
         distances.forEachIndexed { i, dist ->
             val x = i * barAreaWidth + (barAreaWidth - barWidth) / 2
             val normalizedHeight = (dist / maxDist) * maxBarHeight * animProgress.value
-            
-            // Bar background
+
             drawRect(
-                color = barBgColor.copy(alpha = 0.3f), 
-                topLeft = Offset(x, 0f), 
+                color = barBgColor.copy(alpha = 0.3f),
+                topLeft = Offset(x, 0f),
                 size = Size(barWidth, maxBarHeight)
             )
-            
-            // Bar foreground
+
             if (dist > 0f) {
                 drawRect(
                     color = barColor,
@@ -154,8 +211,7 @@ private fun WeeklyBarChart(
                     size = Size(barWidth, normalizedHeight)
                 )
             }
-            
-            // Day label
+
             drawContext.canvas.nativeCanvas.drawText(
                 days.getOrElse(i) { "" },
                 x + barWidth / 2,
@@ -168,8 +224,9 @@ private fun WeeklyBarChart(
 
 @Composable
 private fun StatCard(
-    value: String,
+    value: Float,
     label: String,
+    format: (Float) -> String,
     surfaceColor: Color,
     textPrimary: Color,
     textSecondary: Color,
@@ -181,6 +238,16 @@ private fun StatCard(
         kotlinx.coroutines.delay(delayIndex * 100L)
         visible = true
     }
+
+    val animatedValue by animateFloatAsState(
+        targetValue = if (visible) value else 0f,
+        animationSpec = tween(
+            durationMillis = 900,
+            delayMillis = delayIndex * 100,
+            easing = FastOutSlowInEasing
+        ),
+        label = "stat_count_up"
+    )
 
     AnimatedVisibility(
         visible = visible,
@@ -196,10 +263,10 @@ private fun StatCard(
                 modifier = Modifier.fillMaxSize().padding(12.dp),
                 verticalArrangement = Arrangement.Center
             ) {
-                Text(value, style = MaterialTheme.typography.headlineSmall, color = textPrimary)
+                Text(format(animatedValue), style = MaterialTheme.typography.headlineSmall,
+                    color = textPrimary)
                 Text(label, style = MaterialTheme.typography.bodySmall, color = textSecondary)
             }
         }
     }
 }
-

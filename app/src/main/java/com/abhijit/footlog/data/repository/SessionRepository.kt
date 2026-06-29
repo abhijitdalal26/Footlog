@@ -18,7 +18,9 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.launch
-import java.util.Calendar
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 private const val TAG = "SessionRepository"
 
@@ -41,6 +43,10 @@ class SessionRepository(context: Context) {
     fun getFavoriteSessions(): Flow<List<SessionEntity>> = sessionDao.getFavoritesFlow()
     fun getTotalDistance(): Flow<Float?> = sessionDao.getTotalDistanceFlow()
     fun getSessionCount(): Flow<Int> = sessionDao.getSessionCountFlow()
+    fun getTodayDistance(startMs: Long, endMs: Long): Flow<Float?> =
+        sessionDao.getTodayDistanceFlow(startMs, endMs)
+    suspend fun getMaxDistanceExcluding(id: String): Float? = sessionDao.getMaxDistanceExcluding(id)
+    suspend fun deleteSession(session: SessionEntity) = sessionDao.delete(session)
 
     suspend fun saveSession(session: SessionEntity) {
         sessionDao.insert(session)
@@ -99,33 +105,45 @@ class SessionRepository(context: Context) {
     // ── Stats ──────────────────────────────────────────────────────────────
 
     suspend fun getWeeklyDistances(): List<Float> {
-        val cal = Calendar.getInstance()
-        cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
-        cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-        val today = cal.timeInMillis
+        val today = LocalDate.now()
+        val zone = ZoneId.systemDefault()
         return (6 downTo 0).map { daysAgo ->
-            val dayStart = today - daysAgo * 86400000L
-            val dayEnd = dayStart + 86400000L
+            val day = today.minusDays(daysAgo.toLong())
+            val dayStart = day.atStartOfDay(zone).toInstant().toEpochMilli()
+            val dayEnd = day.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
             sessionDao.getDistanceBetween(dayStart, dayEnd) ?: 0f
         }
+    }
+
+    suspend fun getMonthlyDistances(): Pair<List<Float>, List<Long>> {
+        val today = LocalDate.now()
+        val zone = ZoneId.systemDefault()
+        val distances = mutableListOf<Float>()
+        val weekStarts = mutableListOf<Long>()
+        for (weeksAgo in 4 downTo 0) {
+            val weekEndDate = today.minusDays((weeksAgo * 7).toLong())
+            val weekStartDate = weekEndDate.minusDays(7)
+            val weekStart = weekStartDate.atStartOfDay(zone).toInstant().toEpochMilli()
+            val weekEnd = weekEndDate.atStartOfDay(zone).toInstant().toEpochMilli()
+            distances.add(sessionDao.getDistanceBetween(weekStart, weekEnd) ?: 0f)
+            weekStarts.add(weekStart)
+        }
+        return Pair(distances, weekStarts)
     }
 
     suspend fun getCurrentStreak(): Int {
         val startTimes = sessionDao.getAllStartTimes()
         if (startTimes.isEmpty()) return 0
-        val cal = Calendar.getInstance()
-        fun dayKey(ms: Long): Long {
-            cal.timeInMillis = ms
-            cal.set(Calendar.HOUR_OF_DAY, 0); cal.set(Calendar.MINUTE, 0)
-            cal.set(Calendar.SECOND, 0); cal.set(Calendar.MILLISECOND, 0)
-            return cal.timeInMillis
-        }
-        val uniqueDays = startTimes.map { dayKey(it) }.toSortedSet().toList().sortedDescending()
-        val today = dayKey(System.currentTimeMillis())
+        val zone = ZoneId.systemDefault()
+        val uniqueDays = startTimes.map { ms ->
+            Instant.ofEpochMilli(ms).atZone(zone).toLocalDate()
+        }.toSet()
+        val sortedDays = uniqueDays.sortedDescending()
+        val today = LocalDate.now()
         var streak = 0
         var expected = today
-        for (day in uniqueDays) {
-            if (day == expected) { streak++; expected -= 86400000L } else break
+        for (day in sortedDays) {
+            if (day == expected) { streak++; expected = expected.minusDays(1) } else break
         }
         return streak
     }

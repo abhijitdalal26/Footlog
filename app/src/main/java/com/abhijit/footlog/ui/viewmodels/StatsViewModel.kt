@@ -23,24 +23,21 @@ class StatsViewModel(app: Application) : AndroidViewModel(app) {
 
     init {
         viewModelScope.launch {
-            combine(
-                repo.getTotalDistance(),
-                repo.getSessionCount(),
-                repo.getExploredCellCount()
-            ) { dist, count, cells ->
-                Triple(dist ?: 0f, count, cells)
-            }.collect { (dist, count, cells) ->
+            repo.getSessionCount().collect { count ->
                 val streak = repo.getCurrentStreak()
                 val weekly = repo.getWeeklyDistances()
+                _stats.update { it.copy(totalSessions = count, currentStreak = streak, weeklyDistances = weekly) }
+            }
+        }
+        viewModelScope.launch {
+            combine(
+                repo.getTotalDistance(),
+                repo.getExploredCellCount()
+            ) { dist, cells ->
+                Pair(dist ?: 0f, cells)
+            }.collect { (dist, cells) ->
                 // Each cell is ~25m x 25m = 625m² = 0.000625 km²
-                val areaKm2 = cells * 0.000625
-                _stats.value = StatsData(
-                    totalDistanceMeters = dist,
-                    totalSessions = count,
-                    currentStreak = streak,
-                    exploredAreaKm2 = areaKm2,
-                    weeklyDistances = weekly
-                )
+                _stats.update { it.copy(totalDistanceMeters = dist, exploredAreaKm2 = cells * 0.000625) }
             }
         }
     }

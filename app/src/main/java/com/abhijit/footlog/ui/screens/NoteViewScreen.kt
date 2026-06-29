@@ -15,8 +15,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.data.entity.NoteType
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.NoteViewModel
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -56,8 +58,8 @@ fun NoteViewScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
                 Text(
-                    SimpleDateFormat("MMMM d, yyyy · h:mm a", Locale.getDefault())
-                        .format(Date(n.createdAt)),
+                    DateTimeFormatter.ofPattern("MMMM d, yyyy '·' h:mm a", Locale.getDefault())
+                        .format(Instant.ofEpochMilli(n.createdAt).atZone(ZoneId.systemDefault()).toLocalDateTime()),
                     style = MaterialTheme.typography.bodySmall,
                     color = textSecondary
                 )

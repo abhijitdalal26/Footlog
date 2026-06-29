@@ -15,6 +15,14 @@ class SessionSummaryViewModel(app: Application, private val sessionId: String) :
     val session: StateFlow<SessionEntity?> = repo.getSessionById(sessionId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
 
+    val isPersonalBest: StateFlow<Boolean> = session
+        .filterNotNull()
+        .map { s ->
+            val prevMax = repo.getMaxDistanceExcluding(s.id) ?: 0f
+            s.distanceMeters > prevMax && s.distanceMeters >= 500f
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
     fun toggleFavorite(isFavorite: Boolean) {
         viewModelScope.launch {
             val s = repo.getSessionByIdOnce(sessionId) ?: return@launch

@@ -9,14 +9,31 @@ import com.abhijit.footlog.data.entity.SessionEntity
 import com.abhijit.footlog.data.repository.SessionRepository
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import java.time.LocalDate
+import java.time.ZoneId
 
 class HomeViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SessionRepository(app)
 
     val recentSessions: StateFlow<List<SessionEntity>> = repo.getRecentSessions()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
+
+    val todayDistanceKm: StateFlow<Float> = run {
+        val zone = ZoneId.systemDefault()
+        val today = LocalDate.now()
+        val start = today.atStartOfDay(zone).toInstant().toEpochMilli()
+        val end = today.plusDays(1).atStartOfDay(zone).toInstant().toEpochMilli()
+        repo.getTodayDistance(start, end)
+            .map { (it ?: 0f) / 1000f }
+            .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0f)
+    }
+
+    val currentStreak: StateFlow<Int> = repo.getSessionCount()
+        .map { repo.getCurrentStreak() }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 0)
 
     private val prefs = com.abhijit.footlog.data.preferences.AppPreferences(app)
 

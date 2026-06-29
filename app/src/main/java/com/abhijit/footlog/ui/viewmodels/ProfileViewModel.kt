@@ -31,6 +31,8 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
     val userName = prefs.userName.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val userEmail = prefs.userEmail.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
     val profilePhotoUri = prefs.profilePhotoUri.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
+    val themeMode = prefs.themeMode.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), "system")
+    val gpsAccuracy = prefs.gpsAccuracy.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), 50f)
 
     val isSignedIn: StateFlow<Boolean> = prefs.firebaseUid
         .map { it != null }
@@ -63,6 +65,14 @@ class ProfileViewModel(app: Application) : AndroidViewModel(app) {
 
     fun setProfilePhoto(uri: String?) {
         viewModelScope.launch { prefs.setProfilePhotoUri(uri) }
+    }
+
+    fun setThemeMode(mode: String) {
+        viewModelScope.launch { prefs.setThemeMode(mode) }
+    }
+
+    fun setGpsAccuracy(accuracy: Float) {
+        viewModelScope.launch { prefs.setGpsAccuracy(accuracy) }
     }
 
     fun setUserProfile(name: String?, email: String?, photoUri: String?) {

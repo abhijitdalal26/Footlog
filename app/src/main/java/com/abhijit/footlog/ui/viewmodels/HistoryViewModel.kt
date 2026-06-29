@@ -7,25 +7,35 @@ import androidx.lifecycle.viewModelScope
 import com.abhijit.footlog.data.entity.SessionEntity
 import com.abhijit.footlog.data.repository.SessionRepository
 import kotlinx.coroutines.flow.*
-import java.text.SimpleDateFormat
-import java.util.*
+import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
+import java.util.Locale
 
 class HistoryViewModel(app: Application) : AndroidViewModel(app) {
     private val repo = SessionRepository(app)
 
     val groupedSessions: StateFlow<Map<String, List<SessionEntity>>> =
         repo.getAllSessions().map { sessions ->
-            val cal = Calendar.getInstance()
-            val now = System.currentTimeMillis()
-            val weekMs = 7 * 86400000L
+            val now = LocalDate.now()
+            val zone = ZoneId.systemDefault()
             sessions.groupBy { s ->
+                val sessionDate = Instant.ofEpochMilli(s.startTime).atZone(zone).toLocalDate()
+                val daysAgo = ChronoUnit.DAYS.between(sessionDate, now)
                 when {
-                    now - s.startTime < weekMs -> "This week"
-                    now - s.startTime < 2 * weekMs -> "Last week"
-                    else -> SimpleDateFormat("MMMM yyyy", Locale.getDefault()).format(Date(s.startTime))
+                    daysAgo < 7 -> "This week"
+                    daysAgo < 14 -> "Last week"
+                    else -> DateTimeFormatter.ofPattern("MMMM yyyy", Locale.getDefault()).format(sessionDate)
                 }
             }
         }.stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    fun deleteSession(session: SessionEntity) {
+        viewModelScope.launch { repo.deleteSession(session) }
+    }
 
     companion object {
         val Factory = object : ViewModelProvider.Factory {

@@ -38,8 +38,10 @@ import com.abhijit.footlog.ui.viewmodels.ShareCardViewModel
 import kotlinx.coroutines.launch
 import java.io.File
 import java.io.FileOutputStream
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,8 +99,8 @@ fun ShareCardScreen(
                     modifier = Modifier.align(Alignment.TopEnd).padding(16.dp)
                 )
                 session?.let { s ->
-                    val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-                        .format(Date(s.startTime))
+                    val dateStr = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
+                        .format(Instant.ofEpochMilli(s.startTime).atZone(ZoneId.systemDefault()).toLocalDate())
                     Column(modifier = Modifier.padding(24.dp)) {
                         Text(
                             "%.1f km".format(s.distanceMeters / 1000f),
@@ -139,8 +141,8 @@ fun ShareCardScreen(
                 ShareAction(Icons.Filled.ContentCopy, "Copy stats", textSecondary) {
                     session?.let { s ->
                         val durationMin = (s.endTime - s.startTime) / 60000
-                        val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault())
-                            .format(Date(s.startTime))
+                        val dateStr = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
+                            .format(Instant.ofEpochMilli(s.startTime).atZone(ZoneId.systemDefault()).toLocalDate())
                         val text = "%.1f km ${s.activityType} · ${durationMin}m · $dateStr"
                             .format(s.distanceMeters / 1000f)
                         scope.launch {

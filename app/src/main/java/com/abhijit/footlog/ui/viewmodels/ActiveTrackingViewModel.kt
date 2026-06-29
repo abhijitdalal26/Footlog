@@ -9,8 +9,10 @@ import androidx.lifecycle.viewModelScope
 import com.abhijit.footlog.data.entity.HighlightEntity
 import com.abhijit.footlog.data.entity.LatLngPoint
 import com.abhijit.footlog.data.entity.SessionEntity
+import com.abhijit.footlog.data.preferences.AppPreferences
 import com.abhijit.footlog.data.repository.SessionRepository
 import com.abhijit.footlog.service.LocationTrackingService
+import com.abhijit.footlog.util.estimateCalories
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.*
@@ -24,7 +26,9 @@ data class TrackingUiState(
     val routePoints: List<LatLngPoint> = emptyList(),
     val highlights: List<HighlightEntity> = emptyList(),
     val currentLocation: Location? = null,
-    val countdownSeconds: Int = 3
+    val countdownSeconds: Int = 3,
+    val caloriesBurned: Int = 0,
+    val currentSpeedKmh: Float = 0f
 )
 
 class ActiveTrackingViewModel(
@@ -33,6 +37,7 @@ class ActiveTrackingViewModel(
 ) : AndroidViewModel(app) {
 
     private val repo = SessionRepository(app)
+    private val prefs = AppPreferences(app)
     private val _uiState = MutableStateFlow(TrackingUiState())
     val uiState: StateFlow<TrackingUiState> = _uiState.asStateFlow()
 
@@ -75,8 +80,9 @@ class ActiveTrackingViewModel(
 
     private fun collectLocation() {
         viewModelScope.launch {
+            val accuracyThreshold = prefs.gpsAccuracy.first()
             LocationTrackingService.locationFlow.filterNotNull().collect { loc ->
-                if (loc.accuracy > 50f) return@collect
+                if (loc.accuracy > accuracyThreshold) return@collect
 
                 val prev = lastLocation
                 val added = if (prev != null) prev.distanceTo(loc) else 0f
@@ -85,10 +91,13 @@ class ActiveTrackingViewModel(
                 lastLocation = loc
                 val newPoint = LatLngPoint(loc.latitude, loc.longitude)
                 _uiState.update { s ->
+                    val newDist = s.distanceMeters + added
                     s.copy(
                         currentLocation = loc,
                         routePoints = s.routePoints + newPoint,
-                        distanceMeters = s.distanceMeters + added
+                        distanceMeters = newDist,
+                        caloriesBurned = estimateCalories(newDist, activityType),
+                        currentSpeedKmh = if (loc.hasSpeed()) loc.speed * 3.6f else 0f
                     )
                 }
                 repo.insertExploredCell(loc.latitude, loc.longitude)

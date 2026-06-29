@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import androidx.datastore.preferences.core.stringPreferencesKey
 import kotlinx.coroutines.flow.Flow
@@ -20,6 +21,8 @@ class AppPreferences(private val context: Context) {
         private val USER_EMAIL = stringPreferencesKey("user_email")
         private val PROFILE_PHOTO_URI = stringPreferencesKey("profile_photo_uri")
         private val FIREBASE_UID = stringPreferencesKey("firebase_uid")
+        private val THEME_MODE = stringPreferencesKey("theme_mode")
+        private val GPS_ACCURACY = floatPreferencesKey("gps_accuracy")
     }
 
     val isOnboardingComplete: Flow<Boolean> = context.dataStore.data.map { prefs ->
@@ -30,9 +33,24 @@ class AppPreferences(private val context: Context) {
     val userEmail: Flow<String?> = context.dataStore.data.map { prefs -> prefs[USER_EMAIL] }
     val profilePhotoUri: Flow<String?> = context.dataStore.data.map { prefs -> prefs[PROFILE_PHOTO_URI] }
     val firebaseUid: Flow<String?> = context.dataStore.data.map { prefs -> prefs[FIREBASE_UID] }
+    val themeMode: Flow<String> = context.dataStore.data.map { prefs ->
+        prefs[THEME_MODE] ?: "system"
+    }
+
+    val gpsAccuracy: Flow<Float> = context.dataStore.data.map { prefs ->
+        prefs[GPS_ACCURACY] ?: 50f
+    }
 
     suspend fun setOnboardingComplete() {
         context.dataStore.edit { prefs -> prefs[ONBOARDING_COMPLETE] = true }
+    }
+
+    suspend fun setThemeMode(mode: String) {
+        context.dataStore.edit { prefs -> prefs[THEME_MODE] = mode }
+    }
+
+    suspend fun setGpsAccuracy(accuracy: Float) {
+        context.dataStore.edit { prefs -> prefs[GPS_ACCURACY] = accuracy }
     }
 
     suspend fun setUserProfile(name: String?, email: String?, photoUri: String?) {

@@ -30,6 +30,10 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.ProfileViewModel
+import com.canhub.cropper.CropImageContract
+import com.canhub.cropper.CropImageContractOptions
+import com.canhub.cropper.CropImageOptions
+import com.canhub.cropper.CropImageView
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,21 +54,40 @@ fun ProfileScreen(
     val isSignedIn by vm.isSignedIn.collectAsState()
     val isSyncing by vm.isSyncing.collectAsState()
     val signInError by vm.signInError.collectAsState()
+    val themeMode by vm.themeMode.collectAsState()
+    val gpsAccuracy by vm.gpsAccuracy.collectAsState()
 
     val context = LocalContext.current
     var showNameDialog by remember { mutableStateOf(false) }
     var nameInput by remember { mutableStateOf("") }
     var showSignOutDialog by remember { mutableStateOf(false) }
 
+    val cropImageLauncher = rememberLauncherForActivityResult(CropImageContract()) { result ->
+        if (result.isSuccessful) {
+            val uriContent = result.uriContent
+            if (uriContent != null) {
+                vm.setProfilePhoto(uriContent.toString())
+            }
+        }
+    }
+
     val photoPickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia(),
         onResult = { uri ->
             if (uri != null) {
-                context.contentResolver.takePersistableUriPermission(
-                    uri,
-                    android.content.Intent.FLAG_GRANT_READ_URI_PERMISSION
+                cropImageLauncher.launch(
+                    CropImageContractOptions(
+                        uri = uri,
+                        cropImageOptions = CropImageOptions(
+                            imageSourceIncludeGallery = true,
+                            imageSourceIncludeCamera = false,
+                            guidelines = CropImageView.Guidelines.ON,
+                            aspectRatioX = 1,
+                            aspectRatioY = 1,
+                            fixAspectRatio = true
+                        )
+                    )
                 )
-                vm.setProfilePhoto(uri.toString())
             }
         }
     )
@@ -310,6 +333,89 @@ fun ProfileScreen(
                 )
             }
 
+            // Theme section
+            Text(
+                "Appearance",
+                style = MaterialTheme.typography.labelMedium,
+                color = textSecondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(containerColor = surfaceColor),
+                border = if (!isDark) BorderStroke(1.dp, FootlogColors.borderLight) else null
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    ThemeOption("System", "system", themeMode, routeColor, textPrimary, textSecondary) {
+                        vm.setThemeMode("system")
+                    }
+                    HorizontalDivider(
+                        color = if (isDark) FootlogColors.borderDark else FootlogColors.borderLight,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    ThemeOption("Light", "light", themeMode, routeColor, textPrimary, textSecondary) {
+                        vm.setThemeMode("light")
+                    }
+                    HorizontalDivider(
+                        color = if (isDark) FootlogColors.borderDark else FootlogColors.borderLight,
+                        modifier = Modifier.padding(vertical = 4.dp)
+                    )
+                    ThemeOption("Dark", "dark", themeMode, routeColor, textPrimary, textSecondary) {
+                        vm.setThemeMode("dark")
+                    }
+                }
+            }
+
+            // GPS accuracy section
+            Text(
+                "GPS accuracy",
+                style = MaterialTheme.typography.labelMedium,
+                color = textSecondary,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Spacer(Modifier.height(8.dp))
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = MaterialTheme.shapes.medium,
+                colors = CardDefaults.cardColors(containerColor = surfaceColor),
+                border = if (!isDark) BorderStroke(1.dp, FootlogColors.borderLight) else null
+            ) {
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text("Minimum accuracy", style = MaterialTheme.typography.bodyMedium, color = textPrimary)
+                        Text(
+                            if (gpsAccuracy >= 100f) "Off" else "${gpsAccuracy.toInt()}m",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = textSecondary
+                        )
+                    }
+                    Slider(
+                        value = gpsAccuracy,
+                        onValueChange = { vm.setGpsAccuracy(it) },
+                        valueRange = 10f..150f,
+                        steps = 13,
+                        colors = SliderDefaults.colors(
+                            thumbColor = routeColor,
+                            activeTrackColor = routeColor,
+                            inactiveTrackColor = if (isDark) FootlogColors.borderDark else FootlogColors.borderLight
+                        )
+                    )
+                    Text(
+                        "Higher values allow less accurate GPS readings. 10m = most accurate, 150m = off.",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = textSecondary.copy(alpha = 0.7f)
+                    )
+                }
+            }
+
             Spacer(Modifier.height(32.dp))
         }
     }
@@ -380,6 +486,38 @@ fun ProfileScreen(
             containerColor = surfaceColor,
             titleContentColor = textPrimary,
             textContentColor = textSecondary
+        )
+    }
+}
+
+@Composable
+private fun ThemeOption(
+    label: String,
+    value: String,
+    currentMode: String,
+    accentColor: Color,
+    textPrimary: Color,
+    textSecondary: Color,
+    onClick: () -> Unit
+) {
+    val selected = currentMode == value
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 8.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        RadioButton(
+            selected = selected,
+            onClick = onClick,
+            colors = RadioButtonDefaults.colors(selectedColor = accentColor)
+        )
+        Spacer(Modifier.width(12.dp))
+        Text(
+            label,
+            style = MaterialTheme.typography.bodyLarge,
+            color = if (selected) textPrimary else textSecondary
         )
     }
 }

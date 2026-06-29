@@ -65,11 +65,14 @@ fun AppNavHost(startDestination: Screen) {
                             icon = { Icon(item.icon, contentDescription = item.label) },
                             label = { Text(item.label) },
                             colors = NavigationBarItemDefaults.colors(
-                                selectedIconColor = activeColor,
+                                selectedIconColor = if (isDark) FootlogColors.routeLineDark else FootlogColors.routeLineLight,
                                 selectedTextColor = activeColor,
                                 unselectedIconColor = inactiveColor,
                                 unselectedTextColor = inactiveColor,
-                                indicatorColor = navBarBg,
+                                indicatorColor = if (isDark)
+                                    FootlogColors.routeLineDark.copy(alpha = 0.14f)
+                                else
+                                    FootlogColors.routeLineLight.copy(alpha = 0.12f)
                             )
                         )
                     }

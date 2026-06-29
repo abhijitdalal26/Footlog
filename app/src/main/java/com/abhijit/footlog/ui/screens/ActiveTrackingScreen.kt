@@ -24,7 +24,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +49,7 @@ fun ActiveTrackingScreen(
 ) {
     val uiState by vm.uiState.collectAsState()
     val context = LocalContext.current
+    val haptic = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
     val danger = FootlogColors.danger
     val accent = if (isDark) FootlogColors.highlightAccentDark else FootlogColors.highlightAccentLight
@@ -59,7 +62,6 @@ fun ActiveTrackingScreen(
     var showStopConfirmation by remember { mutableStateOf(false) }
     var pendingPhotoUri by remember { mutableStateOf<Uri?>(null) }
 
-    // Back during tracking shows confirmation; back during countdown is free
     BackHandler(enabled = isTracking) {
         showStopConfirmation = true
     }
@@ -77,7 +79,6 @@ fun ActiveTrackingScreen(
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
-        // Map always visible underneath everything
         MapLibreView(
             routePoints = uiState.routePoints,
             currentLocation = uiState.currentLocation,
@@ -88,7 +89,6 @@ fun ActiveTrackingScreen(
         )
 
         if (!isTracking) {
-            // 3-2-1 countdown overlay
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -120,7 +120,7 @@ fun ActiveTrackingScreen(
                 }
             }
         } else {
-            // Stat overlay — top
+            // Stats overlay — top
             Column(
                 modifier = Modifier
                     .align(Alignment.TopCenter)
@@ -130,7 +130,8 @@ fun ActiveTrackingScreen(
                         else FootlogColors.surfaceLight.copy(alpha = 0.88f),
                         shape = RoundedCornerShape(12.dp)
                     )
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -139,6 +140,17 @@ fun ActiveTrackingScreen(
                     StatBlock("%.2f".format(uiState.distanceMeters / 1000f), "km", textPrimary, textSecondary)
                     StatBlock(formatDuration(uiState.elapsedSeconds), "time", textPrimary, textSecondary)
                     StatBlock(formatPace(uiState.distanceMeters, uiState.elapsedSeconds), "min/km", textPrimary, textSecondary)
+                }
+                HorizontalDivider(
+                    color = if (isDark) FootlogColors.borderDark else FootlogColors.borderLight,
+                    thickness = 0.5.dp
+                )
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceEvenly
+                ) {
+                    StatBlock("${uiState.caloriesBurned}", "kcal", textPrimary, textSecondary)
+                    StatBlock(formatSpeed(uiState.currentSpeedKmh), "km/h", textPrimary, textSecondary)
                 }
             }
 
@@ -149,6 +161,7 @@ fun ActiveTrackingScreen(
             ) {
                 SmallFloatingActionButton(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         val photoDir = File(context.cacheDir, "footlog_shares").also { it.mkdirs() }
                         val photoFile = File(photoDir, "photo_${System.currentTimeMillis()}.jpg")
                         val uri = FileProvider.getUriForFile(context, "${context.packageName}.provider", photoFile)
@@ -165,7 +178,10 @@ fun ActiveTrackingScreen(
                     Icon(Icons.Filled.CameraAlt, contentDescription = "Camera")
                 }
                 SmallFloatingActionButton(
-                    onClick = { showHighlightSheet = true },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        showHighlightSheet = true
+                    },
                     containerColor = if (isDark) FootlogColors.surfaceDark else FootlogColors.surfaceLight,
                     contentColor = accent
                 ) {
@@ -173,7 +189,7 @@ fun ActiveTrackingScreen(
                 }
             }
 
-            // Left FAB — note (text, not mic)
+            // Left FAB — note
             SmallFloatingActionButton(
                 onClick = { onNoteClick(uiState.sessionId) },
                 modifier = Modifier.align(Alignment.BottomStart).padding(bottom = 100.dp, start = 16.dp),
@@ -196,7 +212,10 @@ fun ActiveTrackingScreen(
             )
 
             Button(
-                onClick = { showStopConfirmation = true },
+                onClick = {
+                    haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                    showStopConfirmation = true
+                },
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 32.dp)
@@ -223,6 +242,7 @@ fun ActiveTrackingScreen(
                 uiState.currentLocation?.let { loc ->
                     vm.addHighlight(loc.latitude, loc.longitude, category, emoji, name, note)
                 }
+                haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                 showHighlightSheet = false
             }
         )
@@ -236,6 +256,7 @@ fun ActiveTrackingScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
                         vm.stopTracking()
                         onStop(uiState.sessionId)
                     },
@@ -288,4 +309,8 @@ private fun formatPace(distanceMeters: Float, elapsedSeconds: Long): String {
     val min = minPerKm.toInt()
     val sec = ((minPerKm - min) * 60).toInt()
     return "%d'%02d\"".format(min, sec)
+}
+
+private fun formatSpeed(speedKmh: Float): String {
+    return if (speedKmh < 0.5f) "--" else "%.1f".format(speedKmh)
 }

@@ -4,6 +4,7 @@ import android.app.Application
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.abhijit.footlog.data.entity.HighlightEntity
 import com.abhijit.footlog.data.entity.SessionEntity
 import com.abhijit.footlog.data.repository.SessionRepository
 import kotlinx.coroutines.flow.*
@@ -16,6 +17,9 @@ class SessionDetailViewModel(app: Application, sessionId: String) : AndroidViewM
 
     val hasNote: StateFlow<Boolean> = repo.hasNote(sessionId)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), false)
+
+    val highlights: StateFlow<List<HighlightEntity>> = repo.getHighlightsForSession(sessionId)
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyList())
 
     companion object {
         fun Factory(sessionId: String) = object : ViewModelProvider.Factory {

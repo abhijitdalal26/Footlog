@@ -6,12 +6,16 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.SessionSummaryViewModel
 import com.abhijit.footlog.ui.components.MapLibreView
+import com.abhijit.footlog.util.estimateCalories
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -24,6 +28,8 @@ fun SessionSummaryScreen(
     )
 ) {
     val session by vm.session.collectAsState()
+    val isPersonalBest by vm.isPersonalBest.collectAsState()
+    val haptic = LocalHapticFeedback.current
     val isDark = isSystemInDarkTheme()
     val bgColor = if (isDark) FootlogColors.backgroundDark else FootlogColors.backgroundLight
     val surfaceColor = if (isDark) FootlogColors.surfaceDark else FootlogColors.surfaceLight
@@ -77,6 +83,36 @@ fun SessionSummaryScreen(
                 }
             }
 
+            if (isPersonalBest) {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.medium,
+                    colors = CardDefaults.cardColors(
+                        containerColor = routeColor.copy(alpha = 0.12f)
+                    )
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Text("🏆", style = MaterialTheme.typography.titleLarge)
+                        Column {
+                            Text(
+                                "New personal best!",
+                                style = MaterialTheme.typography.labelLarge,
+                                color = routeColor
+                            )
+                            Text(
+                                "Longest session yet",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = textSecondary
+                            )
+                        }
+                    }
+                }
+            }
+
             OutlinedTextField(
                 value = titleText,
                 onValueChange = { titleText = it },
@@ -93,19 +129,28 @@ fun SessionSummaryScreen(
             )
 
             session?.let { s ->
+                val durationMin = ((s.endTime - s.startTime) / 60000)
+                val pace = if (s.distanceMeters > 0 && durationMin > 0)
+                    "%.1f min/km".format(durationMin / (s.distanceMeters / 1000f)) else "—"
+                val calories = estimateCalories(s.distanceMeters, s.activityType)
+
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
-                    val durationMin = ((s.endTime - s.startTime) / 60000)
-                    val pace = if (s.distanceMeters > 0 && durationMin > 0)
-                        "%.1f min/km".format(durationMin / (s.distanceMeters / 1000f)) else "—"
-
                     StatChip("%.1f km".format(s.distanceMeters / 1000f), "Distance",
                         surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 0)
                     StatChip("${durationMin}m", "Duration",
                         surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 1)
-                    StatChip(pace, "Pace", surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 2)
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    StatChip(pace, "Pace",
+                        surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 2)
+                    StatChip("$calories kcal", "Calories",
+                        surfaceColor, textPrimary, textSecondary, Modifier.weight(1f), 3)
                 }
 
                 Row(
@@ -131,13 +176,21 @@ fun SessionSummaryScreen(
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 OutlinedButton(
-                    onClick = { vm.saveTitle(titleText); onDone() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.saveTitle(titleText)
+                        onDone()
+                    },
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
                     colors = ButtonDefaults.outlinedButtonColors(contentColor = textPrimary)
                 ) { Text("Done") }
                 Button(
-                    onClick = { vm.saveTitle(titleText); onShare() },
+                    onClick = {
+                        haptic.performHapticFeedback(HapticFeedbackType.LongPress)
+                        vm.saveTitle(titleText)
+                        onShare()
+                    },
                     modifier = Modifier.weight(1f),
                     shape = MaterialTheme.shapes.small,
                     colors = ButtonDefaults.buttonColors(
@@ -188,4 +241,3 @@ fun StatChip(
         }
     }
 }
-

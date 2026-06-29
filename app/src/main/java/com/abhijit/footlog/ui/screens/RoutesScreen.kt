@@ -16,8 +16,10 @@ import com.abhijit.footlog.data.entity.SessionEntity
 import com.abhijit.footlog.ui.components.MapLibreView
 import com.abhijit.footlog.ui.theme.FootlogColors
 import com.abhijit.footlog.ui.viewmodels.RoutesViewModel
-import java.text.SimpleDateFormat
-import java.util.*
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -186,7 +188,8 @@ private fun RouteCard(
     accentColor: androidx.compose.ui.graphics.Color,
     onClick: () -> Unit
 ) {
-    val dateStr = SimpleDateFormat("MMM d, yyyy", Locale.getDefault()).format(Date(session.startTime))
+    val dateStr = DateTimeFormatter.ofPattern("MMM d, yyyy", Locale.getDefault())
+        .format(Instant.ofEpochMilli(session.startTime).atZone(ZoneId.systemDefault()).toLocalDate())
     val distKm = "%.1f km".format(session.distanceMeters / 1000f)
 
     Card(
