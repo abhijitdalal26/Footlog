@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -5,6 +7,7 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.google.services)
     alias(libs.plugins.firebase.crashlytics)
+    alias(libs.plugins.kotlin.android)
 }
 
 android {
@@ -20,13 +23,21 @@ android {
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         
-        val webClientId = project.findProperty("WEB_CLIENT_ID")?.toString() ?: "\"\""
+        val localProperties = Properties()
+        val localPropertiesFile = rootProject.file("local.properties")
+        if (localPropertiesFile.exists()) {
+            localPropertiesFile.inputStream().use { localProperties.load(it) }
+        }
+        val webClientId = localProperties.getProperty("WEB_CLIENT_ID") ?: "\"\""
         buildConfigField("String", "WEB_CLIENT_ID", webClientId)
+        val maptilerKey = localProperties.getProperty("MAPTILER_API_KEY") ?: "\"\""
+        buildConfigField("String", "MAPTILER_API_KEY", maptilerKey)
     }
 
     buildTypes {
         release {
             isMinifyEnabled = true
+            isShrinkResources = true
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro"
@@ -40,6 +51,9 @@ android {
     buildFeatures {
         compose = true
         buildConfig = true
+    }
+    kotlinOptions {
+        jvmTarget = "11"
     }
 }
 
@@ -100,6 +114,9 @@ dependencies {
 
     // Image Cropper
     implementation("com.vanniktech:android-image-cropper:4.6.0")
+
+    // Google Fonts
+    implementation("androidx.compose.ui:ui-text-google-fonts")
 
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

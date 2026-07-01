@@ -3,9 +3,13 @@ package com.abhijit.footlog.ui.components
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.viewinterop.AndroidView
+import com.abhijit.footlog.BuildConfig
 import com.abhijit.footlog.data.entity.ExploredCellEntity
 import com.abhijit.footlog.data.entity.HighlightEntity
 import com.abhijit.footlog.data.entity.LatLngPoint
@@ -36,8 +40,15 @@ import org.maplibre.geojson.LineString
 import org.maplibre.geojson.Point
 import org.maplibre.geojson.Polygon
 
-private const val STYLE_LIBERTY = "https://tiles.openfreemap.org/styles/liberty"
-private const val STYLE_DARK = "https://tiles.openfreemap.org/styles/dark"
+private val STYLE_LIBERTY = if (BuildConfig.MAPTILER_API_KEY.isNotEmpty())
+    "https://api.maptiler.com/maps/streets-v2/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
+else
+    "https://tiles.openfreemap.org/styles/liberty"
+
+private val STYLE_DARK = if (BuildConfig.MAPTILER_API_KEY.isNotEmpty())
+    "https://api.maptiler.com/maps/dark-v2/style.json?key=${BuildConfig.MAPTILER_API_KEY}"
+else
+    "https://tiles.openfreemap.org/styles/dark"
 private const val ROUTE_SOURCE_ID = "route-source"
 private const val ROUTE_LAYER_ID = "route-layer"
 private const val EXPLORE_SOURCE_ID = "explore-source"
@@ -54,11 +65,37 @@ fun MapLibreView(
     exploredCells: List<ExploredCellEntity> = emptyList(),
     routeColor: Color,
     showMyLocation: Boolean = false,
+    recenterTrigger: Int = 0,
     isInteractive: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     var mapRef: MapLibreMap? by remember { mutableStateOf(null) }
     val isDark = isSystemInDarkTheme()
+    val context = LocalContext.current
+
+    val mapView = remember {
+        MapLibre.getInstance(context)
+        MapView(context)
+    }
+
+    val lifecycleOwner = androidx.lifecycle.compose.LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner, mapView) {
+        val observer = LifecycleEventObserver { _, event ->
+            when (event) {
+                Lifecycle.Event.ON_CREATE -> mapView.onCreate(null)
+                Lifecycle.Event.ON_START -> mapView.onStart()
+                Lifecycle.Event.ON_RESUME -> mapView.onResume()
+                Lifecycle.Event.ON_PAUSE -> mapView.onPause()
+                Lifecycle.Event.ON_STOP -> mapView.onStop()
+                Lifecycle.Event.ON_DESTROY -> mapView.onDestroy()
+                else -> {}
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose {
+            lifecycleOwner.lifecycle.removeObserver(observer)
+        }
+    }
 
     val routeColorHex = remember(routeColor) {
         "#%06X".format(routeColor.toArgb() and 0xFFFFFF)
@@ -90,17 +127,31 @@ fun MapLibreView(
 
     val styleUri = if (isDark) STYLE_DARK else STYLE_LIBERTY
 
+    LaunchedEffect(recenterTrigger) {
+        if (recenterTrigger > 0) {
+            mapRef?.let { map ->
+                if (showMyLocation) {
+                    try {
+                        map.locationComponent.cameraMode = CameraMode.TRACKING
+                        map.animateCamera(CameraUpdateFactory.zoomTo(16.5))
+                    } catch (_: Exception) {}
+                } else {
+                    currentLocation?.let { loc ->
+                        map.animateCamera(CameraUpdateFactory.newLatLngZoom(LatLng(loc.latitude, loc.longitude), 16.0))
+                    }
+                }
+            }
+        }
+    }
+
     AndroidView(
-        factory = { context ->
-            MapLibre.getInstance(context)
-            MapView(context).apply {
+        factory = {
+            mapView.apply {
                 getMapAsync { map ->
                     mapRef = map
                     map.uiSettings.isRotateGesturesEnabled = false
-
-                    if (showMyLocation) {
-                        map.moveCamera(CameraUpdateFactory.zoomTo(15.0))
-                    }
+                    map.uiSettings.isLogoEnabled = false
+                    map.uiSettings.isAttributionEnabled = false
 
                     map.setStyle(Style.Builder().fromUri(styleUri)) { style ->
                         // Route line
@@ -162,8 +213,11 @@ fun MapLibreView(
                                         .build()
                                 )
                                 map.locationComponent.isLocationComponentEnabled = true
+                                // TRACKING mode: camera automatically follows the blue dot
                                 map.locationComponent.cameraMode = CameraMode.TRACKING
                                 map.locationComponent.renderMode = RenderMode.COMPASS
+                                // Zoom in so the user sees themselves right away
+                                map.moveCamera(CameraUpdateFactory.zoomTo(16.5))
                             } catch (_: Exception) {}
                         }
                     }
@@ -172,11 +226,13 @@ fun MapLibreView(
                         map.uiSettings.setAllGesturesEnabled(false)
                     }
                 }
-                onStart()
             }
         },
         update = { _ ->
             mapRef?.let { map ->
+                if (map.style?.uri != styleUri) {
+                    map.setStyle(styleUri)
+                }
                 map.getStyle { style ->
                     // Route color + geometry
                     style.getLayer(ROUTE_LAYER_ID)?.let { layer ->
@@ -201,7 +257,7 @@ fun MapLibreView(
                         if (layer is FillLayer) layer.setProperties(fillColor(exploreColorHex))
                     }
 
-                    // Highlight markers via GeoJSON — no deprecated addMarker/clear
+                    // Highlight markers via GeoJSON
                     val highlightSource = style.getSourceAs<GeoJsonSource>(HIGHLIGHTS_SOURCE_ID)
                     val highlightFeatures = highlights.map { h ->
                         Feature.fromGeometry(Point.fromLngLat(h.lng, h.lat)).apply {
@@ -211,6 +267,9 @@ fun MapLibreView(
                     highlightSource?.setGeoJson(FeatureCollection.fromFeatures(highlightFeatures))
                 }
 
+                // When showMyLocation is true the LocationComponent's TRACKING camera mode
+                // handles centering the map on the blue dot automatically — don't fight it.
+                // Only do manual camera moves for the non-live (history/detail) view.
                 if (!showMyLocation) {
                     currentLocation?.let { loc ->
                         map.animateCamera(
